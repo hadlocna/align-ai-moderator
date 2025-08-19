@@ -100,6 +100,11 @@
                         </div>
                     </div>
                     <div id="shareInfo" class="hidden mt-6 p-4 bg-blue-50 rounded-lg">
+                        <div class="mb-4">
+                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mb-2">
+                                Session ID: <span id="sessionIdDisplay"></span>
+                            </span>
+                        </div>
                         <h3 class="font-semibold text-blue-800 mb-2">Share this link with the other person:</h3>
                         <div class="flex items-center space-x-2">
                             <input type="text" id="shareLink" readonly class="flex-1 p-2 border rounded text-sm bg-white">
@@ -108,6 +113,11 @@
                             </button>
                         </div>
                         <p class="text-sm text-blue-600 mt-2">Waiting for the other person to join and agree on the topic...</p>
+                        <div class="mt-3">
+                            <button id="checkForPartnerBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm">
+                                <i class="fas fa-sync-alt mr-1"></i>Check for Partner
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -239,15 +249,21 @@
     </div>
 
     <script>
-        // Session management
+        // Session management with localStorage persistence
         let sessionData = {
             sessionId: null,
             userName: '',
             topic: '',
             topicAgreed: false,
             participants: [],
-            isCreator: false
+            isCreator: false,
+            partnerJoined: false,
+            createdAt: null
         };
+
+        // Session storage keys
+        const SESSIONS_KEY = 'align_sessions';
+        const USER_SESSION_KEY = 'align_user_session';
 
         // Screen elements
         const loginScreen = document.getElementById('loginScreen');
@@ -280,6 +296,50 @@
         // URL and session management
         function generateSessionId() {
             return Math.random().toString(36).substr(2, 9);
+        }
+
+        function saveSessionToStorage(session) {
+            try {
+                const sessions = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '{}');
+                sessions[session.sessionId] = session;
+                localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+                
+                // Also save user's current session
+                localStorage.setItem(USER_SESSION_KEY, JSON.stringify(session));
+            } catch (e) {
+                console.error('Failed to save session:', e);
+            }
+        }
+
+        function loadSessionFromStorage(sessionId) {
+            try {
+                const sessions = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '{}');
+                return sessions[sessionId] || null;
+            } catch (e) {
+                console.error('Failed to load session:', e);
+                return null;
+            }
+        }
+
+        function checkForPartner(sessionId) {
+            const session = loadSessionFromStorage(sessionId);
+            if (session && session.participants.length > 1) {
+                return true;
+            }
+            return false;
+        }
+
+        function pollForPartner() {
+            const session = loadSessionFromStorage(sessionData.sessionId);
+            if (session && session.participants.length > 1 && !sessionData.partnerJoined) {
+                sessionData.partnerJoined = true;
+                sessionData.participants = session.participants;
+                showScreen(topicAgreementScreen);
+                updateTopicAgreementScreen();
+            } else if (sessionData.isCreator && !sessionData.partnerJoined) {
+                // Continue polling every 3 seconds for creators waiting for partners
+                setTimeout(pollForPartner, 3000);
+            }
         }
 
         function getSessionFromURL() {
@@ -344,17 +404,31 @@
             sessionData.topic = topic;
             sessionData.sessionId = generateSessionId();
             sessionData.isCreator = true;
+            sessionData.createdAt = new Date().toISOString();
+            sessionData.participants = [sessionData.userName];
+            
+            // Save session to localStorage
+            saveSessionToStorage(sessionData);
             
             const shareURL = updateURL(sessionData.sessionId);
             document.getElementById('shareLink').value = shareURL;
+            document.getElementById('sessionIdDisplay').textContent = sessionData.sessionId;
             document.getElementById('shareInfo').classList.remove('hidden');
             document.getElementById('shareSessionBtn').classList.remove('hidden');
             document.getElementById('createTopicBtn').classList.add('hidden');
             
-            // Simulate waiting for partner
+            // Start polling for partner to join
+            pollForPartner();
+        });
+
+        document.getElementById('checkForPartnerBtn').addEventListener('click', () => {
+            const btn = document.getElementById('checkForPartnerBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Checking...';
+            
             setTimeout(() => {
-                simulatePartnerJoin();
-            }, 3000);
+                pollForPartner();
+                btn.innerHTML = '<i class="fas fa-sync-alt mr-1"></i>Check for Partner';
+            }, 1000);
         });
 
         document.getElementById('copyLinkBtn').addEventListener('click', () => {
@@ -372,6 +446,15 @@
 
         document.getElementById('agreeTopic').addEventListener('click', () => {
             sessionData.topicAgreed = true;
+            
+            // Save agreement to session
+            const session = loadSessionFromStorage(sessionData.sessionId);
+            if (session) {
+                session.topicAgreed = true;
+                session[`${sessionData.userName}_agreed`] = true;
+                saveSessionToStorage(session);
+            }
+            
             proceedToPrivateInputs();
         });
 
@@ -418,16 +501,29 @@
         });
 
         function joinExistingSession() {
-            // Simulate getting session data
-            sessionData.topic = "How to handle childcare tomorrow and Friday after the babysitter canceled?";
-            sessionData.participants = ['Partner'];
+            const existingSession = loadSessionFromStorage(sessionData.sessionId);
             
-            showScreen(topicAgreementScreen);
-            updateTopicAgreementScreen();
-        }
-
-        function simulatePartnerJoin() {
-            sessionData.participants.push('Partner');
+            if (!existingSession) {
+                alert('Session not found or expired. Please ask the creator to share a new link.');
+                showScreen(loginScreen);
+                return;
+            }
+            
+            // Load session data
+            sessionData.topic = existingSession.topic;
+            sessionData.isCreator = false;
+            sessionData.createdAt = existingSession.createdAt;
+            
+            // Add current user to participants if not already there
+            if (!existingSession.participants.includes(sessionData.userName)) {
+                existingSession.participants.push(sessionData.userName);
+                sessionData.participants = existingSession.participants;
+                saveSessionToStorage(existingSession);
+            } else {
+                sessionData.participants = existingSession.participants;
+            }
+            
+            // Show topic agreement screen
             showScreen(topicAgreementScreen);
             updateTopicAgreementScreen();
         }
@@ -450,15 +546,34 @@
             
             // Add other participants
             sessionData.participants.forEach(participant => {
-                const participantDiv = document.createElement('div');
-                participantDiv.className = 'flex items-center space-x-2 mb-2';
-                participantDiv.innerHTML = `
-                    <i class="fas fa-user text-gray-600"></i>
-                    <span class="font-medium">${participant}</span>
-                    <span class="text-green-600 text-sm">(Connected)</span>
-                `;
-                participantsList.appendChild(participantDiv);
+                if (participant !== sessionData.userName) {
+                    const participantDiv = document.createElement('div');
+                    participantDiv.className = 'flex items-center space-x-2 mb-2';
+                    participantDiv.innerHTML = `
+                        <i class="fas fa-user text-gray-600"></i>
+                        <span class="font-medium">${participant}</span>
+                        <span class="text-green-600 text-sm">(Connected)</span>
+                    `;
+                    participantsList.appendChild(participantDiv);
+                }
             });
+            
+            // Show different UI based on participant count
+            if (sessionData.participants.length < 2) {
+                const waitingDiv = document.createElement('div');
+                waitingDiv.className = 'text-center p-4 bg-yellow-50 rounded-lg mt-4';
+                waitingDiv.innerHTML = `
+                    <i class="fas fa-clock text-yellow-600 mb-2"></i>
+                    <p class="text-yellow-800 font-medium">Waiting for other participant to join...</p>
+                    <p class="text-yellow-600 text-sm mt-1">Share the link above to invite someone</p>
+                `;
+                participantsList.appendChild(waitingDiv);
+                
+                // Hide topic action buttons until partner joins
+                document.getElementById('topicActions').style.display = 'none';
+            } else {
+                document.getElementById('topicActions').style.display = 'block';
+            }
         }
 
         function proceedToPrivateInputs() {
@@ -539,8 +654,13 @@
                 topic: '',
                 topicAgreed: false,
                 participants: [],
-                isCreator: false
+                isCreator: false,
+                partnerJoined: false,
+                createdAt: null
             };
+            
+            // Clear local storage for user session
+            localStorage.removeItem(USER_SESSION_KEY);
             
             // Clear form fields
             document.getElementById('userName').value = '';
