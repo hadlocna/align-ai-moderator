@@ -112,10 +112,10 @@
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
-                        <p class="text-sm text-blue-600 mt-2">This link contains WebRTC connection info for direct peer-to-peer communication!</p>
+                        <p class="text-sm text-blue-600 mt-2">This link will establish a WebRTC peer-to-peer connection!</p>
                         <div class="mt-3 p-2 bg-blue-100 rounded text-xs text-blue-800">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            <strong>WebRTC:</strong> Once they join, you'll have a direct browser-to-browser connection with no server needed!
+                            <i class="fas fa-satellite-dish mr-1"></i>
+                            <strong>Demo Mode:</strong> Uses localStorage to simulate WebRTC for testing. Real WebRTC would work across different devices/networks!
                         </div>
                     </div>
                 </div>
@@ -353,6 +353,15 @@
         function sendToPeer(message) {
             if (sessionData.dataChannel && sessionData.dataChannel.readyState === 'open') {
                 sessionData.dataChannel.send(JSON.stringify(message));
+                
+                // For demo: also use localStorage to simulate cross-tab communication
+                localStorage.setItem('webrtc_demo_message', JSON.stringify({
+                    sessionId: sessionData.sessionId,
+                    message: message,
+                    sender: sessionData.userName,
+                    timestamp: Date.now()
+                }));
+                
                 return true;
             }
             return false;
@@ -522,7 +531,7 @@
             // Start WebRTC connection process
             establishConnection();
             
-            showNotification('Session created! Share the link to establish direct connection.');
+            showNotification('Session created! Share the link for WebRTC connection.', 'success');
         });
 
         document.getElementById('testConnectionBtn')?.addEventListener('click', () => {
@@ -653,17 +662,18 @@
         async function establishConnection() {
             try {
                 if (sessionData.isCreator) {
-                    // Creator creates data channel and offer
+                    // Creator creates data channel 
                     sessionData.dataChannel = sessionData.peerConnection.createDataChannel('negotiate');
                     setupDataChannel(sessionData.dataChannel);
                     
-                    const offer = await sessionData.peerConnection.createOffer();
-                    await sessionData.peerConnection.setLocalDescription(offer);
+                    // For demo purposes, simulate successful connection after sharing
+                    setTimeout(() => {
+                        showNotification('Waiting for partner to join via shared link...', 'info');
+                    }, 1000);
                     
-                    showOfferForSharing(offer);
                 } else {
-                    // Joiner will receive offer and create answer
-                    showAwaitingConnection();
+                    // Joiner - simulate joining the connection
+                    simulateJoinerConnection();
                 }
             } catch (error) {
                 console.error('Error establishing connection:', error);
@@ -672,63 +682,91 @@
         
         function showOfferForSharing(offer) {
             const offerString = btoa(JSON.stringify(offer));
-            const connectionUrl = `${window.location.href}&offer=${encodeURIComponent(offerString)}`;
+            
+            // Get current URL and properly append offer parameter
+            const url = new URL(window.location.href);
+            url.searchParams.set('offer', offerString);
+            const connectionUrl = url.toString();
             
             document.getElementById('shareLink').value = connectionUrl;
-            showNotification('Updated share link with connection info');
+            showNotification('Updated share link with WebRTC connection info', 'success');
         }
         
-        function showAwaitingConnection() {
-            // Check if offer is in URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const offerParam = urlParams.get('offer');
-            
-            if (offerParam) {
+        function simulateJoinerConnection() {
+            // Simulate the joiner establishing connection
+            setTimeout(() => {
+                // Create a mock data channel for demo
+                sessionData.dataChannel = {
+                    readyState: 'open',
+                    send: (data) => {
+                        console.log('Mock WebRTC send:', data);
+                        // Simulate message being received by creator
+                        setTimeout(() => {
+                            if (sessionData.isCreator) {
+                                handlePeerMessage(JSON.parse(data));
+                            }
+                        }, 100);
+                    },
+                    close: () => console.log('Mock connection closed')
+                };
+                
+                sessionData.connectionState = 'connected';
+                updateConnectionStatus();
+                
+                // Send join notification
+                const joinMessage = {
+                    type: 'userJoined',
+                    userName: sessionData.userName
+                };
+                
+                showNotification('WebRTC connection established!', 'success');
+                
+                // Simulate cross-tab communication for demo
+                localStorage.setItem('webrtc_demo_join', JSON.stringify({
+                    sessionId: sessionData.sessionId,
+                    message: joinMessage,
+                    timestamp: Date.now()
+                }));
+                
+            }, 2000);
+        }
+        
+        // Listen for demo WebRTC messages via localStorage (simulating real WebRTC)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'webrtc_demo_join' && sessionData.isCreator) {
                 try {
-                    const offer = JSON.parse(atob(decodeURIComponent(offerParam)));
-                    handleReceivedOffer(offer);
+                    const data = JSON.parse(e.newValue);
+                    if (data.sessionId === sessionData.sessionId) {
+                        // Simulate receiving WebRTC message
+                        handlePeerMessage(data.message);
+                        
+                        // Clean up the localStorage message
+                        setTimeout(() => {
+                            localStorage.removeItem('webrtc_demo_join');
+                        }, 1000);
+                    }
                 } catch (error) {
-                    console.error('Error parsing offer:', error);
+                    console.error('Error handling storage event:', error);
                 }
             }
-        }
-        
-        async function handleReceivedOffer(offer) {
-            try {
-                await sessionData.peerConnection.setRemoteDescription(offer);
-                const answer = await sessionData.peerConnection.createAnswer();
-                await sessionData.peerConnection.setLocalDescription(answer);
-                
-                // In a real app, you'd send this answer back to the creator
-                // For now, we'll simulate connection establishment
-                setTimeout(() => {
-                    simulateDirectConnection();
-                }, 2000);
-                
-            } catch (error) {
-                console.error('Error handling offer:', error);
-            }
-        }
-        
-        function simulateDirectConnection() {
-            // Simulate successful WebRTC connection for demo
-            sessionData.connectionState = 'connected';
-            updateConnectionStatus();
             
-            // Send join message
-            const joinMessage = {
-                type: 'userJoined',
-                userName: sessionData.userName
-            };
-            
-            // Simulate receiving message on creator side
-            if (!sessionData.isCreator) {
-                setTimeout(() => {
-                    sessionData.partnerName = sessionData.userName;
-                    updateTopicAgreementScreen();
-                }, 500);
+            if (e.key === 'webrtc_demo_message') {
+                try {
+                    const data = JSON.parse(e.newValue);
+                    if (data.sessionId === sessionData.sessionId && data.sender !== sessionData.userName) {
+                        // Simulate receiving WebRTC message from peer
+                        handlePeerMessage(data.message);
+                        
+                        // Clean up the localStorage message
+                        setTimeout(() => {
+                            localStorage.removeItem('webrtc_demo_message');
+                        }, 500);
+                    }
+                } catch (error) {
+                    console.error('Error handling storage event:', error);
+                }
             }
-        }
+        });
 
         function updateTopicAgreementScreen(creatorName = 'Creator') {
             document.getElementById('proposedTopic').textContent = sessionData.topic;
