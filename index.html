@@ -7,6 +7,49 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, doc, setDoc, onSnapshot, deleteDoc, collection, addDoc, query, where, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        // Firebase configuration (demo setup - replace with real config for production)
+        const firebaseConfig = {
+            apiKey: "demo-key",
+            authDomain: "align-moderator-demo.firebaseapp.com", 
+            projectId: "align-moderator-demo",
+            storageBucket: "align-moderator-demo.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:demo123"
+        };
+        
+        // Initialize Firebase with demo/mock fallback
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            window.firebase = { db, doc, setDoc, onSnapshot, deleteDoc, collection, addDoc, query, where, orderBy, serverTimestamp };
+        } catch (error) {
+            console.log('Firebase not available, using mock implementation for demo');
+            // Mock Firebase for local testing
+            window.firebase = {
+                db: {},
+                doc: () => ({ id: 'mock-doc' }),
+                setDoc: async () => console.log('Mock setDoc called'),
+                onSnapshot: (ref, callback) => {
+                    console.log('Mock onSnapshot called');
+                    setTimeout(() => callback({ exists: () => true, data: () => ({ participants: ['demo'] }) }), 1000);
+                    return () => console.log('Mock unsubscribe');
+                },
+                deleteDoc: async () => console.log('Mock deleteDoc called'),
+                collection: () => ({ id: 'mock-collection' }),
+                addDoc: async () => console.log('Mock addDoc called'),
+                query: () => ({ id: 'mock-query' }),
+                where: () => ({ id: 'mock-where' }),
+                orderBy: () => ({ id: 'mock-orderBy' }),
+                serverTimestamp: () => new Date()
+            };
+        }
+    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -112,10 +155,10 @@
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
-                        <p class="text-sm text-blue-600 mt-2">This link will establish a WebRTC peer-to-peer connection!</p>
+                        <p class="text-sm text-blue-600 mt-2">This link will establish a real-time collaborative session!</p>
                         <div class="mt-3 p-2 bg-green-100 rounded text-xs text-green-800">
-                            <i class="fas fa-satellite-dish mr-1"></i>
-                            <strong>Real WebRTC:</strong> Direct browser-to-browser connection! Check debug logs for connection details.
+                            <i class="fas fa-cloud mr-1"></i>
+                            <strong>Real-time sync:</strong> Secure cloud-based session! Check debug logs for connection details.
                         </div>
                     </div>
                 </div>
@@ -149,18 +192,18 @@
                         </div>
                     </div>
                     <div id="participantStatus" class="mt-6 p-4 bg-gray-50 rounded-lg">
-                        <h3 class="font-semibold mb-2">WebRTC Session:</h3>
+                        <h3 class="font-semibold mb-2">Real-time Session:</h3>
                         <div id="participantsList"></div>
                         <div class="mt-4 pt-3 border-t border-gray-200">
                             <button id="testConnectionBtn" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition mr-2">
-                                <i class="fas fa-satellite-dish mr-1"></i>Test P2P Connection
+                                <i class="fas fa-cloud mr-1"></i>Test Connection
                             </button>
                             <button id="toggleDebugBtn" class="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 transition">
                                 <i class="fas fa-bug mr-1"></i>Show Debug
                             </button>
                         </div>
                         <div id="debugPanel" class="hidden mt-4 p-3 bg-gray-800 text-green-400 rounded text-xs font-mono max-h-40 overflow-y-auto">
-                            <div class="font-bold text-white mb-2">WebRTC Debug Logs:</div>
+                            <div class="font-bold text-white mb-2">Real-time Debug Logs:</div>
                             <div id="debugLogs"></div>
                         </div>
                     </div>
@@ -260,35 +303,17 @@
     </div>
 
     <script>
-        // WebRTC peer-to-peer session management
+        // Firebase real-time session management
         let sessionData = {
             sessionId: null,
             userName: '',
             topic: '',
             topicAgreed: false,
             isCreator: false,
-            peerConnection: null,
-            dataChannel: null,
             connectionState: 'disconnected',
-            partnerName: null
+            partnerName: null,
+            sessionListener: null
         };
-
-        // Real WebRTC Configuration with multiple STUN servers
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun.services.mozilla.com' }
-            ],
-            iceCandidatePoolSize: 10
-        };
-
-        // Signaling keys for localStorage-based signaling
-        const SIGNALING_PREFIX = 'webrtc_signal_';
-        const OFFER_KEY = (sessionId) => `${SIGNALING_PREFIX}${sessionId}_offer`;
-        const ANSWER_KEY = (sessionId) => `${SIGNALING_PREFIX}${sessionId}_answer`;
-        const ICE_KEY = (sessionId, id) => `${SIGNALING_PREFIX}${sessionId}_ice_${id}`;
         
         // Development logs for troubleshooting
         let debugLogs = [];
@@ -356,106 +381,149 @@
             return Math.random().toString(36).substr(2, 9);
         }
 
-        // WebRTC Connection Management
-        function initWebRTC() {
-            addDebugLog('Initializing WebRTC PeerConnection...', 'info');
-            sessionData.peerConnection = new RTCPeerConnection(rtcConfig);
-            
-            // Handle ICE candidates
-            sessionData.peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    addDebugLog(`ICE candidate generated: ${event.candidate.type}`, 'info');
-                } else {
-                    addDebugLog('ICE gathering complete - ready for connection', 'success');
-                }
-            };
-            
-            // Handle connection state changes
-            sessionData.peerConnection.onconnectionstatechange = () => {
-                sessionData.connectionState = sessionData.peerConnection.connectionState;
-                addDebugLog(`Connection state: ${sessionData.connectionState}`, 'info');
+        // Firebase Real-time Connection Management
+        async function initFirebaseSession() {
+            try {
+                addDebugLog('Initializing Firebase real-time session...', 'info');
+                
+                const { db, doc, setDoc, serverTimestamp } = window.firebase;
+                
+                // Create session document
+                const sessionRef = doc(db, 'sessions', sessionData.sessionId);
+                await setDoc(sessionRef, {
+                    topic: sessionData.topic,
+                    creator: sessionData.userName,
+                    createdAt: serverTimestamp(),
+                    participants: [sessionData.userName],
+                    isActive: true
+                });
+                
+                addDebugLog('Firebase session created successfully', 'success');
+                sessionData.connectionState = 'connected';
                 updateConnectionStatus();
                 
-                if (sessionData.connectionState === 'connected') {
-                    addDebugLog('WebRTC connection established!', 'success');
-                    showNotification('Real WebRTC connection established!', 'success');
-                }
-            };
-            
-            // Handle incoming data channel
-            sessionData.peerConnection.ondatachannel = (event) => {
-                addDebugLog('Incoming data channel received', 'info');
-                const channel = event.channel;
-                setupDataChannel(channel);
-            };
-            
-            // Handle signaling state changes
-            sessionData.peerConnection.onsignalingstatechange = () => {
-                sessionData.signalingState = sessionData.peerConnection.signalingState;
-                addDebugLog(`Signaling state: ${sessionData.signalingState}`, 'info');
+                // Listen for session updates
+                listenToSession();
+                
+                // Schedule cleanup for privacy
+                cleanupSession();
+                
+            } catch (error) {
+                addDebugLog(`Error initializing Firebase session: ${error.message}`, 'error');
+                showNotification('Connection error - please try again', 'error');
+            }
+        }
+
+        async function joinFirebaseSession() {
+            try {
+                addDebugLog('Joining Firebase session...', 'info');
+                
+                const { db, doc, setDoc, serverTimestamp } = window.firebase;
+                
+                // Update session with new participant
+                const sessionRef = doc(db, 'sessions', sessionData.sessionId);
+                await setDoc(sessionRef, {
+                    participants: [sessionData.partnerName, sessionData.userName],
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+                
+                addDebugLog('Successfully joined Firebase session', 'success');
+                sessionData.connectionState = 'connected';
                 updateConnectionStatus();
-            };
+                
+                // Listen for session updates
+                listenToSession();
+                
+                // Send join message
+                await sendMessage({
+                    type: 'userJoined',
+                    userName: sessionData.userName
+                });
+                
+                // Schedule cleanup for privacy
+                cleanupSession();
+                
+            } catch (error) {
+                addDebugLog(`Error joining Firebase session: ${error.message}`, 'error');
+                showNotification('Failed to join session - please try again', 'error');
+            }
         }
         
-        function setupDataChannel(channel) {
-            sessionData.dataChannel = channel;
-            
-            channel.onopen = () => {
-                addDebugLog('Data channel opened - ready for messaging!', 'success');
-                updateConnectionStatus();
+        function listenToSession() {
+            try {
+                const { db, doc, onSnapshot, collection, query, where, orderBy } = window.firebase;
                 
-                // Send initial join message
-                if (!sessionData.isCreator) {
-                    sendToPeer({
-                        type: 'userJoined',
-                        userName: sessionData.userName
+                // Listen to session updates
+                const sessionRef = doc(db, 'sessions', sessionData.sessionId);
+                sessionData.sessionListener = onSnapshot(sessionRef, (doc) => {
+                    if (doc.exists()) {
+                        const data = doc.data();
+                        addDebugLog('Session updated', 'info');
+                        
+                        // Update participant list
+                        if (data.participants && data.participants.length > 1) {
+                            sessionData.partnerName = data.participants.find(p => p !== sessionData.userName);
+                            updateTopicAgreementScreen();
+                        }
+                    }
+                });
+                
+                // Listen to messages
+                const messagesRef = collection(db, 'sessions', sessionData.sessionId, 'messages');
+                const messagesQuery = query(messagesRef, orderBy('timestamp'));
+                
+                onSnapshot(messagesQuery, (snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') {
+                            const message = change.doc.data();
+                            if (message.sender !== sessionData.userName) {
+                                handleMessage(message);
+                            }
+                        }
                     });
-                }
-            };
-            
-            channel.onmessage = (event) => {
-                addDebugLog(`Received message: ${event.data.substring(0, 50)}...`, 'info');
-                try {
-                    handlePeerMessage(JSON.parse(event.data));
-                } catch (e) {
-                    addDebugLog(`Error parsing message: ${e.message}`, 'error');
-                }
-            };
-            
-            channel.onclose = () => {
-                addDebugLog('Data channel closed', 'warning');
-                updateConnectionStatus();
-            };
-            
-            channel.onerror = (error) => {
-                addDebugLog(`Data channel error: ${error}`, 'error');
-            };
+                });
+                
+                addDebugLog('Firebase listeners established', 'success');
+                
+            } catch (error) {
+                addDebugLog(`Error setting up Firebase listeners: ${error.message}`, 'error');
+            }
         }
         
-        function sendToPeer(message) {
-            if (sessionData.dataChannel && sessionData.dataChannel.readyState === 'open') {
-                sessionData.dataChannel.send(JSON.stringify(message));
+        async function sendMessage(message) {
+            try {
+                const { db, collection, addDoc, serverTimestamp } = window.firebase;
+                
+                const messagesRef = collection(db, 'sessions', sessionData.sessionId, 'messages');
+                await addDoc(messagesRef, {
+                    ...message,
+                    sender: sessionData.userName,
+                    timestamp: serverTimestamp()
+                });
+                
                 addDebugLog(`Sent message: ${message.type}`, 'info');
                 return true;
+                
+            } catch (error) {
+                addDebugLog(`Error sending message: ${error.message}`, 'error');
+                showNotification('Message failed to send', 'warning');
+                return false;
             }
-            addDebugLog('Cannot send message - no WebRTC connection', 'warning');
-            showNotification('No WebRTC connection - message not sent', 'warning');
-            return false;
         }
         
-        function handlePeerMessage(message) {
-            console.log('Received from peer:', message);
+        function handleMessage(message) {
+            console.log('Received message:', message);
             
             switch (message.type) {
                 case 'userJoined':
                     sessionData.partnerName = message.userName;
                     updateTopicAgreementScreen();
-                    showNotification(`${message.userName} joined via WebRTC!`, 'success');
+                    showNotification(`${message.userName} joined the session!`, 'success');
                     break;
                 case 'topicModified':
                     sessionData.topic = message.topic;
                     document.getElementById('proposedTopic').textContent = message.topic;
-                    showNotification(`${message.userName} modified the topic via P2P`, 'info');
+                    showNotification(`${message.userName} modified the topic`, 'info');
                     break;
                 case 'topicAgreed':
                     showNotification(`${message.userName} agreed to the topic!`, 'success');
@@ -464,15 +532,15 @@
                     proceedToPrivateInputs();
                     break;
                 case 'ping':
-                    showNotification(`WebRTC ping from ${message.userName}`, 'success');
+                    showNotification(`Ping from ${message.userName}`, 'success');
                     // Send pong back
-                    sendToPeer({
+                    sendMessage({
                         type: 'pong',
                         userName: sessionData.userName
                     });
                     break;
                 case 'pong':
-                    showNotification(`WebRTC pong from ${message.userName}`, 'success');
+                    showNotification(`Pong from ${message.userName}`, 'success');
                     break;
             }
         }
@@ -480,9 +548,9 @@
         function updateConnectionStatus() {
             const statusElement = document.getElementById('connectionStatus');
             if (statusElement) {
-                const isConnected = sessionData.dataChannel && sessionData.dataChannel.readyState === 'open';
+                const isConnected = sessionData.connectionState === 'connected';
                 if (isConnected) {
-                    statusElement.innerHTML = '<span style="color: #10B981;">🟢 WebRTC Connected</span>';
+                    statusElement.innerHTML = '<span style="color: #10B981;">🟢 Real-time Connected</span>';
                 } else {
                     statusElement.innerHTML = '<span style="color: #6B7280;">🔗 Connecting...</span>';
                 }
@@ -625,13 +693,15 @@
             if (urlData && urlData.sessionId) {
                 sessionData.sessionId = urlData.sessionId;
                 sessionData.isCreator = false;
+                sessionData.topic = urlData.topic;
+                sessionData.partnerName = urlData.creator;
                 joinExistingSession();
             } else {
                 showScreen(topicSetupScreen);
             }
         });
 
-        document.getElementById('createTopicBtn').addEventListener('click', () => {
+        document.getElementById('createTopicBtn').addEventListener('click', async () => {
             const topic = document.getElementById('topicInput').value.trim();
             if (!topic) {
                 alert('Please enter a topic');
@@ -642,10 +712,10 @@
             sessionData.sessionId = generateSessionId();
             sessionData.isCreator = true;
             
-            addDebugLog('Creating new WebRTC session as creator', 'info');
+            addDebugLog('Creating new real-time session as creator', 'info');
             
-            // Initialize WebRTC as creator
-            initWebRTC();
+            // Initialize Firebase session
+            await initFirebaseSession();
             
             const shareURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName);
             document.getElementById('shareLink').value = shareURL;
@@ -654,21 +724,18 @@
             document.getElementById('shareSessionBtn').classList.remove('hidden');
             document.getElementById('createTopicBtn').classList.add('hidden');
             
-            // Start WebRTC connection process
-            establishConnection();
-            
-            showNotification('Session created! Share the link for WebRTC connection.', 'success');
+            showNotification('Session created! Share the link for real-time collaboration.', 'success');
         });
 
-        document.getElementById('testConnectionBtn')?.addEventListener('click', () => {
-            if (sessionData.dataChannel && sessionData.dataChannel.readyState === 'open') {
-                sendToPeer({
+        document.getElementById('testConnectionBtn')?.addEventListener('click', async () => {
+            if (sessionData.connectionState === 'connected') {
+                await sendMessage({
                     type: 'ping',
                     userName: sessionData.userName
                 });
-                showNotification('Test message sent via WebRTC!');
+                showNotification('Test message sent!', 'info');
             } else {
-                showNotification('No WebRTC connection established yet');
+                showNotification('No connection established yet', 'warning');
             }
         });
 
@@ -685,17 +752,17 @@
             }, 2000);
         });
 
-        document.getElementById('agreeTopic').addEventListener('click', () => {
+        document.getElementById('agreeTopic').addEventListener('click', async () => {
             sessionData.topicAgreed = true;
             
             // Send agreement to peer
-            sendToPeer({
+            await sendMessage({
                 type: 'topicAgreed',
                 userName: sessionData.userName
             });
             
             // Send proceed signal
-            sendToPeer({
+            await sendMessage({
                 type: 'proceedToInputs'
             });
             
@@ -706,7 +773,7 @@
             document.getElementById('modifyTopicSection').classList.remove('hidden');
         });
 
-        document.getElementById('submitModification').addEventListener('click', () => {
+        document.getElementById('submitModification').addEventListener('click', async () => {
             const modification = document.getElementById('topicModification').value.trim();
             if (!modification) {
                 alert('Please enter a modification');
@@ -717,8 +784,8 @@
             sessionData.topic = modification;
             document.getElementById('proposedTopic').textContent = modification;
             
-            // Send to peer via WebRTC
-            const sent = sendToPeer({
+            // Send to peer via Firebase
+            const sent = await sendMessage({
                 type: 'topicModified',
                 topic: modification,
                 userName: sessionData.userName
@@ -759,7 +826,7 @@
             }, 4000);
         });
 
-        function joinExistingSession() {
+        async function joinExistingSession() {
             addDebugLog('Attempting to join existing session', 'info');
             const urlData = getSessionDataFromURL();
             
@@ -780,200 +847,41 @@
             sessionData.isCreator = false;
             sessionData.partnerName = urlData.creator;
             
-            // Initialize WebRTC as joiner
-            initWebRTC();
+            // Join Firebase session
+            await joinFirebaseSession();
             
             // Show topic agreement screen
             showScreen(topicAgreementScreen);
             updateTopicAgreementScreen(urlData.creator);
-            
-            // Start connection process
-            establishConnection();
         }
         
-        async function establishConnection() {
+        // Session cleanup for privacy
+        async function cleanupSession() {
             try {
-                addDebugLog('Starting WebRTC connection process...', 'info');
-                
-                if (sessionData.isCreator) {
-                    // Creator: Create offer and wait for joiner
-                    await createOffer();
-                    
-                    // Start polling for answer
-                    pollForAnswer();
-                    
-                } else {
-                    // Joiner: Look for offer and create answer
-                    pollForOffer();
+                if (sessionData.sessionListener) {
+                    sessionData.sessionListener();
+                    addDebugLog('Firebase listeners cleaned up', 'info');
                 }
-            } catch (error) {
-                addDebugLog(`Error establishing connection: ${error.message}`, 'error');
-            }
-        }
-        
-        async function createOffer() {
-            try {
-                addDebugLog('Creating WebRTC offer...', 'info');
                 
-                // Create data channel
-                sessionData.dataChannel = sessionData.peerConnection.createDataChannel('negotiate', {
-                    ordered: true
-                });
-                setupDataChannel(sessionData.dataChannel);
-                
-                // Create offer
-                const offer = await sessionData.peerConnection.createOffer();
-                await sessionData.peerConnection.setLocalDescription(offer);
-                
-                // Store offer for cross-browser signaling
-                sessionData.localOffer = offer;
-                
-                // Update share URL with offer
-                updateShareURLWithOffer(offer);
-                
-                addDebugLog('Offer created and embedded in share URL', 'success');
-                showNotification('WebRTC offer created and embedded in share link!', 'success');
-                
-            } catch (error) {
-                addDebugLog(`Error creating offer: ${error.message}`, 'error');
-            }
-        }
-        
-        function updateShareURLWithOffer(offer) {
-            try {
-                // Compress and encode offer for URL
-                const offerString = btoa(JSON.stringify(offer));
-                
-                // Update the share URL
-                const currentURL = document.getElementById('shareLink').value;
-                const url = new URL(currentURL);
-                url.searchParams.set('offer', offerString);
-                
-                const newShareURL = url.toString();
-                document.getElementById('shareLink').value = newShareURL;
-                
-                addDebugLog('Share URL updated with WebRTC offer', 'info');
-                
-            } catch (error) {
-                addDebugLog(`Error updating share URL: ${error.message}`, 'error');
-            }
-        }
-        
-        function pollForAnswer() {
-            addDebugLog('WebRTC offer/answer flow will complete when joiner processes the offer', 'info');
-            // For URL-based signaling, we don't need to poll for answers
-            // The connection will establish automatically through ICE candidates
-        }
-        
-        function pollForOffer() {
-            addDebugLog('Looking for WebRTC offer in URL parameters...', 'info');
-            
-            // Check if offer is in URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const offerParam = urlParams.get('offer');
-            
-            if (offerParam) {
-                try {
-                    addDebugLog('Found offer in URL, decoding...', 'info');
-                    const offer = JSON.parse(atob(offerParam));
-                    addDebugLog('Offer decoded successfully', 'success');
+                if (sessionData.sessionId) {
+                    const { db, doc, deleteDoc, collection } = window.firebase;
                     
-                    // Set remote description and create answer
-                    createAnswer(offer);
-                    
-                } catch (error) {
-                    addDebugLog(`Error decoding offer from URL: ${error.message}`, 'error');
-                    showNotification('Invalid offer in URL - connection failed', 'error');
-                }
-            } else {
-                addDebugLog('No offer found in URL - this might be an old link', 'warning');
-                showNotification('No WebRTC offer found in link. Ask creator to share a new link.', 'warning');
-            }
-        }
-        
-        async function createAnswer(offer) {
-            try {
-                addDebugLog('Processing offer and creating answer...', 'info');
-                
-                await sessionData.peerConnection.setRemoteDescription(offer);
-                addDebugLog('Remote description set successfully', 'success');
-                
-                const answer = await sessionData.peerConnection.createAnswer();
-                await sessionData.peerConnection.setLocalDescription(answer);
-                addDebugLog('Answer created and local description set', 'success');
-                
-                // For URL-based signaling, the answer is handled automatically
-                // The WebRTC connection will establish through ICE candidate exchange
-                
-                addDebugLog('WebRTC negotiation in progress...', 'info');
-                showNotification('WebRTC answer created! Connection establishing...', 'success');
-                
-            } catch (error) {
-                addDebugLog(`Error creating answer: ${error.message}`, 'error');
-                showNotification(`WebRTC error: ${error.message}`, 'error');
-            }
-        }
-        
-        function pollForIceCandidates() {
-            const processedCandidates = new Set();
-            
-            const checkForCandidates = () => {
-                Object.keys(localStorage).forEach(async key => {
-                    if (key.startsWith(ICE_KEY(sessionData.sessionId, '').slice(0, -1)) && !processedCandidates.has(key)) {
+                    // Delete session data after 1 hour for privacy
+                    setTimeout(async () => {
                         try {
-                            const candidateData = JSON.parse(localStorage.getItem(key));
-                            if (candidateData.sender !== sessionData.userName) {
-                                addDebugLog(`Adding ICE candidate from ${candidateData.sender}`, 'info');
-                                await sessionData.peerConnection.addIceCandidate(candidateData.candidate);
-                                processedCandidates.add(key);
-                            }
+                            const sessionRef = doc(db, 'sessions', sessionData.sessionId);
+                            await deleteDoc(sessionRef);
+                            addDebugLog('Session data cleaned up for privacy', 'info');
                         } catch (error) {
-                            addDebugLog(`Error processing ICE candidate: ${error.message}`, 'error');
+                            addDebugLog(`Error cleaning session: ${error.message}`, 'warning');
                         }
-                    }
-                });
-                
-                // Continue polling while not connected
-                if (sessionData.connectionState !== 'connected') {
-                    setTimeout(checkForCandidates, 500);
+                    }, 3600000); // 1 hour
                 }
-            };
-            
-            checkForCandidates();
-        }
-        
-        function showOfferForSharing(offer) {
-            const offerString = btoa(JSON.stringify(offer));
-            
-            // Get current URL and properly append offer parameter
-            const url = new URL(window.location.href);
-            url.searchParams.set('offer', offerString);
-            const connectionUrl = url.toString();
-            
-            document.getElementById('shareLink').value = connectionUrl;
-            showNotification('Updated share link with WebRTC connection info', 'success');
-        }
-        
-        function cleanupSignaling() {
-            // Clean up signaling data after successful connection
-            try {
-                localStorage.removeItem(OFFER_KEY(sessionData.sessionId));
-                localStorage.removeItem(ANSWER_KEY(sessionData.sessionId));
                 
-                // Clean up ICE candidates
-                Object.keys(localStorage).forEach(key => {
-                    if (key.startsWith(ICE_KEY(sessionData.sessionId, '').slice(0, -1))) {
-                        localStorage.removeItem(key);
-                    }
-                });
-                
-                addDebugLog('Signaling data cleaned up', 'info');
             } catch (error) {
-                addDebugLog(`Error cleaning up signaling: ${error.message}`, 'error');
+                addDebugLog(`Error during cleanup: ${error.message}`, 'error');
             }
         }
-        
-        // URL-based signaling doesn't need cleanup - data travels with the URL
 
         function updateTopicAgreementScreen(creatorName = 'Creator') {
             document.getElementById('proposedTopic').textContent = sessionData.topic;
@@ -985,7 +893,7 @@
             const statusDiv = document.createElement('div');
             statusDiv.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background-color: #F9FAFB; border-radius: 0.5rem; margin-bottom: 1rem;';
             statusDiv.innerHTML = `
-                <span style="font-weight: 500;">WebRTC Status:</span>
+                <span style="font-weight: 500;">Connection Status:</span>
                 <span id="connectionStatus" style="font-size: 0.875rem;">
                     🔗 Connecting...
                 </span>
@@ -1104,13 +1012,21 @@
         }
         
         function startOver() {
+            // Clean up Firebase listeners
+            if (sessionData.sessionListener) {
+                sessionData.sessionListener();
+            }
+            
             // Reset all state
             sessionData = {
                 sessionId: null,
                 userName: '',
                 topic: '',
                 topicAgreed: false,
-                isCreator: false
+                isCreator: false,
+                connectionState: 'disconnected',
+                partnerName: null,
+                sessionListener: null
             };
             
             // Clear form fields
@@ -1139,7 +1055,7 @@
                 const loginMessage = document.getElementById('loginMessage');
                 if (loginMessage) {
                     loginMessage.innerHTML = 
-                        `<i class="fas fa-satellite-dish text-indigo-600 mr-2"></i>You're joining a WebRTC session!<br><strong>Topic:</strong> ${urlData.topic || 'Loading...'}<br><small class="text-gray-500">Direct browser-to-browser connection</small>`;
+                        `<i class="fas fa-cloud text-indigo-600 mr-2"></i>You're joining a real-time session!<br><strong>Topic:</strong> ${urlData.topic || 'Loading...'}<br><small class="text-gray-500">Secure collaborative negotiation</small>`;
                 }
                 showScreen(loginScreen);
                 addDebugLog('Detected session join request', 'info');
@@ -1150,18 +1066,18 @@
             }
             
             // Add button listeners with delegation
-            document.addEventListener('click', (e) => {
+            document.addEventListener('click', async (e) => {
                 if (e.target && e.target.id === 'testConnectionBtn') {
                     e.preventDefault();
-                    if (sessionData.dataChannel && sessionData.dataChannel.readyState === 'open') {
-                        sendToPeer({
+                    if (sessionData.connectionState === 'connected') {
+                        await sendMessage({
                             type: 'ping',
                             userName: sessionData.userName
                         });
-                        showNotification('Test ping sent via real WebRTC!', 'info');
+                        showNotification('Test ping sent via real-time sync!', 'info');
                         addDebugLog('Test ping sent to peer', 'info');
                     } else {
-                        showNotification('WebRTC not connected yet', 'warning');
+                        showNotification('Not connected yet', 'warning');
                         addDebugLog('Cannot send ping - no connection', 'warning');
                     }
                 }
