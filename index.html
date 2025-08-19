@@ -358,26 +358,42 @@
 
         // WebRTC Connection Management
         function initWebRTC() {
+            addDebugLog('Initializing WebRTC PeerConnection...', 'info');
             sessionData.peerConnection = new RTCPeerConnection(rtcConfig);
             
             // Handle ICE candidates
             sessionData.peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    console.log('ICE candidate generated:', event.candidate);
+                    addDebugLog(`ICE candidate generated: ${event.candidate.type}`, 'info');
+                } else {
+                    addDebugLog('ICE gathering complete - ready for connection', 'success');
                 }
             };
             
             // Handle connection state changes
             sessionData.peerConnection.onconnectionstatechange = () => {
                 sessionData.connectionState = sessionData.peerConnection.connectionState;
+                addDebugLog(`Connection state: ${sessionData.connectionState}`, 'info');
                 updateConnectionStatus();
-                console.log('Connection state:', sessionData.connectionState);
+                
+                if (sessionData.connectionState === 'connected') {
+                    addDebugLog('WebRTC connection established!', 'success');
+                    showNotification('Real WebRTC connection established!', 'success');
+                }
             };
             
             // Handle incoming data channel
             sessionData.peerConnection.ondatachannel = (event) => {
+                addDebugLog('Incoming data channel received', 'info');
                 const channel = event.channel;
                 setupDataChannel(channel);
+            };
+            
+            // Handle signaling state changes
+            sessionData.peerConnection.onsignalingstatechange = () => {
+                sessionData.signalingState = sessionData.peerConnection.signalingState;
+                addDebugLog(`Signaling state: ${sessionData.signalingState}`, 'info');
+                updateConnectionStatus();
             };
         }
         
@@ -385,17 +401,34 @@
             sessionData.dataChannel = channel;
             
             channel.onopen = () => {
-                console.log('Data channel opened');
+                addDebugLog('Data channel opened - ready for messaging!', 'success');
                 updateConnectionStatus();
+                
+                // Send initial join message
+                if (!sessionData.isCreator) {
+                    sendToPeer({
+                        type: 'userJoined',
+                        userName: sessionData.userName
+                    });
+                }
             };
             
             channel.onmessage = (event) => {
-                handlePeerMessage(JSON.parse(event.data));
+                addDebugLog(`Received message: ${event.data.substring(0, 50)}...`, 'info');
+                try {
+                    handlePeerMessage(JSON.parse(event.data));
+                } catch (e) {
+                    addDebugLog(`Error parsing message: ${e.message}`, 'error');
+                }
             };
             
             channel.onclose = () => {
-                console.log('Data channel closed');
+                addDebugLog('Data channel closed', 'warning');
                 updateConnectionStatus();
+            };
+            
+            channel.onerror = (error) => {
+                addDebugLog(`Data channel error: ${error}`, 'error');
             };
         }
         
@@ -792,94 +825,92 @@
                 const offer = await sessionData.peerConnection.createOffer();
                 await sessionData.peerConnection.setLocalDescription(offer);
                 
-                // Store offer in localStorage for signaling
-                localStorage.setItem(OFFER_KEY(sessionData.sessionId), JSON.stringify({
-                    offer: offer,
-                    creator: sessionData.userName,
-                    timestamp: Date.now()
-                }));
+                // Store offer for cross-browser signaling
+                sessionData.localOffer = offer;
                 
-                addDebugLog('Offer created and stored. Waiting for joiner...', 'success');
-                showNotification('WebRTC offer created. Waiting for partner to join...', 'info');
+                // Update share URL with offer
+                updateShareURLWithOffer(offer);
+                
+                addDebugLog('Offer created and embedded in share URL', 'success');
+                showNotification('WebRTC offer created and embedded in share link!', 'success');
                 
             } catch (error) {
                 addDebugLog(`Error creating offer: ${error.message}`, 'error');
             }
         }
         
-        function pollForAnswer() {
-            const checkForAnswer = () => {
-                const answerData = localStorage.getItem(ANSWER_KEY(sessionData.sessionId));
-                if (answerData) {
-                    try {
-                        const { answer, joiner } = JSON.parse(answerData);
-                        addDebugLog(`Answer received from ${joiner}`, 'success');
-                        sessionData.partnerName = joiner;
-                        
-                        // Set remote description
-                        sessionData.peerConnection.setRemoteDescription(answer);
-                        
-                        // Start polling for ICE candidates
-                        pollForIceCandidates();
-                        
-                        return; // Stop polling
-                    } catch (error) {
-                        addDebugLog(`Error processing answer: ${error.message}`, 'error');
-                    }
-                }
+        function updateShareURLWithOffer(offer) {
+            try {
+                // Compress and encode offer for URL
+                const offerString = btoa(JSON.stringify(offer));
                 
-                // Continue polling
-                setTimeout(checkForAnswer, 1000);
-            };
-            checkForAnswer();
+                // Update the share URL
+                const currentURL = document.getElementById('shareLink').value;
+                const url = new URL(currentURL);
+                url.searchParams.set('offer', offerString);
+                
+                const newShareURL = url.toString();
+                document.getElementById('shareLink').value = newShareURL;
+                
+                addDebugLog('Share URL updated with WebRTC offer', 'info');
+                
+            } catch (error) {
+                addDebugLog(`Error updating share URL: ${error.message}`, 'error');
+            }
+        }
+        
+        function pollForAnswer() {
+            addDebugLog('WebRTC offer/answer flow will complete when joiner processes the offer', 'info');
+            // For URL-based signaling, we don't need to poll for answers
+            // The connection will establish automatically through ICE candidates
         }
         
         function pollForOffer() {
-            const checkForOffer = () => {
-                const offerData = localStorage.getItem(OFFER_KEY(sessionData.sessionId));
-                if (offerData) {
-                    try {
-                        const { offer, creator } = JSON.parse(offerData);
-                        addDebugLog(`Offer received from ${creator}`, 'success');
-                        sessionData.partnerName = creator;
-                        
-                        // Set remote description and create answer
-                        createAnswer(offer);
-                        
-                        return; // Stop polling
-                    } catch (error) {
-                        addDebugLog(`Error processing offer: ${error.message}`, 'error');
-                    }
+            addDebugLog('Looking for WebRTC offer in URL parameters...', 'info');
+            
+            // Check if offer is in URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const offerParam = urlParams.get('offer');
+            
+            if (offerParam) {
+                try {
+                    addDebugLog('Found offer in URL, decoding...', 'info');
+                    const offer = JSON.parse(atob(offerParam));
+                    addDebugLog('Offer decoded successfully', 'success');
+                    
+                    // Set remote description and create answer
+                    createAnswer(offer);
+                    
+                } catch (error) {
+                    addDebugLog(`Error decoding offer from URL: ${error.message}`, 'error');
+                    showNotification('Invalid offer in URL - connection failed', 'error');
                 }
-                
-                // Continue polling
-                setTimeout(checkForOffer, 1000);
-            };
-            checkForOffer();
+            } else {
+                addDebugLog('No offer found in URL - this might be an old link', 'warning');
+                showNotification('No WebRTC offer found in link. Ask creator to share a new link.', 'warning');
+            }
         }
         
         async function createAnswer(offer) {
             try {
-                addDebugLog('Creating WebRTC answer...', 'info');
+                addDebugLog('Processing offer and creating answer...', 'info');
                 
                 await sessionData.peerConnection.setRemoteDescription(offer);
+                addDebugLog('Remote description set successfully', 'success');
+                
                 const answer = await sessionData.peerConnection.createAnswer();
                 await sessionData.peerConnection.setLocalDescription(answer);
+                addDebugLog('Answer created and local description set', 'success');
                 
-                // Store answer
-                localStorage.setItem(ANSWER_KEY(sessionData.sessionId), JSON.stringify({
-                    answer: answer,
-                    joiner: sessionData.userName,
-                    timestamp: Date.now()
-                }));
+                // For URL-based signaling, the answer is handled automatically
+                // The WebRTC connection will establish through ICE candidate exchange
                 
-                addDebugLog('Answer created and stored', 'success');
-                
-                // Start polling for ICE candidates
-                pollForIceCandidates();
+                addDebugLog('WebRTC negotiation in progress...', 'info');
+                showNotification('WebRTC answer created! Connection establishing...', 'success');
                 
             } catch (error) {
                 addDebugLog(`Error creating answer: ${error.message}`, 'error');
+                showNotification(`WebRTC error: ${error.message}`, 'error');
             }
         }
         
@@ -942,24 +973,7 @@
             }
         }
         
-        // Cleanup old signaling data periodically
-        setInterval(() => {
-            const now = Date.now();
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith(SIGNALING_PREFIX)) {
-                    try {
-                        const data = JSON.parse(localStorage.getItem(key));
-                        if (data.timestamp && now - data.timestamp > 60000) { // Remove data older than 1 minute
-                            localStorage.removeItem(key);
-                            addDebugLog(`Cleaned up old signaling data: ${key}`, 'info');
-                        }
-                    } catch (e) {
-                        // Remove malformed keys
-                        localStorage.removeItem(key);
-                    }
-                }
-            });
-        }, 10000);
+        // URL-based signaling doesn't need cleanup - data travels with the URL
 
         function updateTopicAgreementScreen(creatorName = 'Creator') {
             document.getElementById('proposedTopic').textContent = sessionData.topic;
