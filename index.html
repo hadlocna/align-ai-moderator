@@ -76,11 +76,81 @@
 
         <!-- Screen Container -->
         <div id="screenContainer">
-            <!-- Screen 1: User Input -->
-            <div id="userInputScreen" class="fade-in">
+            <!-- Screen 0: Login -->
+            <div id="loginScreen" class="fade-in">
+                <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md mx-auto">
+                    <h2 class="text-3xl font-bold mb-6 text-indigo-600">Welcome to Align</h2>
+                    <p class="text-gray-600 mb-6">Enter your name to begin a negotiation session</p>
+                    <div class="space-y-4">
+                        <input type="text" id="userName" placeholder="Your name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition">
+                        <button id="loginBtn" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition">Start Session</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 1: Topic Setup -->
+            <div id="topicSetupScreen" class="hidden fade-in">
                 <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
-                    <label for="topic" class="block text-lg font-semibold text-gray-700 mb-2">What are we deciding today?</label>
-                    <input type="text" id="topic" placeholder="e.g., How to split chores for the week" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition">
+                    <h2 class="text-2xl font-bold mb-4 text-indigo-600">What are we deciding today?</h2>
+                    <div class="space-y-4">
+                        <input type="text" id="topicInput" placeholder="e.g., How to split chores for the week" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition">
+                        <div class="flex space-x-4">
+                            <button id="createTopicBtn" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition">Create & Share</button>
+                            <button id="shareSessionBtn" class="bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 transition hidden">Share Link</button>
+                        </div>
+                    </div>
+                    <div id="shareInfo" class="hidden mt-6 p-4 bg-blue-50 rounded-lg">
+                        <h3 class="font-semibold text-blue-800 mb-2">Share this link with the other person:</h3>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="shareLink" readonly class="flex-1 p-2 border rounded text-sm bg-white">
+                            <button id="copyLinkBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <p class="text-sm text-blue-600 mt-2">Waiting for the other person to join and agree on the topic...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 2: Topic Agreement -->
+            <div id="topicAgreementScreen" class="hidden fade-in">
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4 text-indigo-600">Topic Agreement</h2>
+                    <div id="topicProposal" class="mb-6">
+                        <p class="text-lg mb-4">Proposed topic:</p>
+                        <div class="bg-gray-50 p-4 rounded-lg border">
+                            <p id="proposedTopic" class="font-medium"></p>
+                        </div>
+                    </div>
+                    <div id="topicActions" class="space-y-4">
+                        <div class="flex space-x-4">
+                            <button id="agreeTopic" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition">
+                                <i class="fas fa-check mr-2"></i>Agree
+                            </button>
+                            <button id="modifyTopic" class="bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-yellow-700 transition">
+                                <i class="fas fa-edit mr-2"></i>Suggest Changes
+                            </button>
+                        </div>
+                        <div id="modifyTopicSection" class="hidden">
+                            <textarea id="topicModification" placeholder="Suggest a modification to the topic..." class="w-full p-3 border rounded-lg h-20"></textarea>
+                            <div class="flex space-x-2 mt-2">
+                                <button id="submitModification" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">Submit</button>
+                                <button id="cancelModification" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="participantStatus" class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h3 class="font-semibold mb-2">Participants:</h3>
+                        <div id="participantsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 3: User Input -->
+            <div id="userInputScreen" class="hidden fade-in">
+                <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-2">Topic:</h2>
+                    <div id="agreedTopic" class="p-3 bg-gray-50 rounded-lg font-medium mb-4"></div>
                 </div>
                 
                 <div class="bg-white p-6 rounded-2xl shadow-lg">
@@ -109,7 +179,7 @@
                 </div>
             </div>
             
-            <!-- Screen 2: Waiting & Privacy Explanation -->
+            <!-- Screen 4: Waiting & Privacy Explanation -->
             <div id="waitingScreen" class="hidden fade-in">
                 <div class="text-center p-8">
                     <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mx-auto"></div>
@@ -146,7 +216,7 @@
                 </div>
             </div>
 
-            <!-- Screen 3: Results -->
+            <!-- Screen 5: Results -->
             <div id="resultsScreen" class="hidden fade-in">
                 <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
                     <h2 class="text-3xl font-bold mb-4 text-center">Proposed Agreement</h2>
@@ -169,26 +239,66 @@
     </div>
 
     <script>
-        const step1Indicator = document.getElementById('step1Indicator');
-        const step2Indicator = document.getElementById('step2Indicator');
-        const step3Indicator = document.getElementById('step3Indicator');
+        // Session management
+        let sessionData = {
+            sessionId: null,
+            userName: '',
+            topic: '',
+            topicAgreed: false,
+            participants: [],
+            isCreator: false
+        };
 
+        // Screen elements
+        const loginScreen = document.getElementById('loginScreen');
+        const topicSetupScreen = document.getElementById('topicSetupScreen');
+        const topicAgreementScreen = document.getElementById('topicAgreementScreen');
         const userInputScreen = document.getElementById('userInputScreen');
         const waitingScreen = document.getElementById('waitingScreen');
         const resultsScreen = document.getElementById('resultsScreen');
 
+        // Step indicators
+        const step1Indicator = document.getElementById('step1Indicator');
+        const step2Indicator = document.getElementById('step2Indicator');
+        const step3Indicator = document.getElementById('step3Indicator');
+
+        // Form elements
         const submitBtn = document.getElementById('submitBtn');
         const agreementDiv = document.getElementById('agreement');
         const backchannelDiv = document.getElementById('backchannel');
         
-        // Mock user data. In a real app, this would be dynamic.
-        const userAInputs = { objectives: '', mustHaves: '', constraints: '' };
-        // In a real app, user B would have their own interface. We'll mock their data for this demo.
-        const userBInputs = { 
+        // User input data
+        const userInputs = { objectives: '', mustHaves: '', constraints: '' };
+        
+        // Mock partner data for demo
+        const mockPartnerData = { 
             objectives: "I need to complete my 2 presentation for Toto, and background research for Salina",
-            mustHaves: "I need at least 4 hours of uniterrupted work, however this can be broken up",
+            mustHaves: "I need at least 4 hours of uninterrupted work, however this can be broken up",
             constraints: "I don't mind paying for a babysitter, but I can't find one and my partner isn't helping, we need to find a solution that's fair to both of us."
         };
+
+        // URL and session management
+        function generateSessionId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        function getSessionFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('session');
+        }
+
+        function updateURL(sessionId) {
+            const newURL = `${window.location.origin}${window.location.pathname}?session=${sessionId}`;
+            window.history.pushState({}, '', newURL);
+            return newURL;
+        }
+
+        function showScreen(screenElement) {
+            document.querySelectorAll('#screenContainer > div').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            screenElement.classList.remove('hidden');
+        }
 
         function updateStepIndicator(step) {
             step1Indicator.classList.remove('step-active', 'step-done');
@@ -203,36 +313,168 @@
             if (step === 3) step3Indicator.classList.add('step-active');
         }
         
+        // Event Listeners
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const userName = document.getElementById('userName').value.trim();
+            if (!userName) {
+                alert('Please enter your name');
+                return;
+            }
+            
+            sessionData.userName = userName;
+            
+            // Check if joining existing session
+            const existingSession = getSessionFromURL();
+            if (existingSession) {
+                sessionData.sessionId = existingSession;
+                sessionData.isCreator = false;
+                joinExistingSession();
+            } else {
+                showScreen(topicSetupScreen);
+            }
+        });
+
+        document.getElementById('createTopicBtn').addEventListener('click', () => {
+            const topic = document.getElementById('topicInput').value.trim();
+            if (!topic) {
+                alert('Please enter a topic');
+                return;
+            }
+            
+            sessionData.topic = topic;
+            sessionData.sessionId = generateSessionId();
+            sessionData.isCreator = true;
+            
+            const shareURL = updateURL(sessionData.sessionId);
+            document.getElementById('shareLink').value = shareURL;
+            document.getElementById('shareInfo').classList.remove('hidden');
+            document.getElementById('shareSessionBtn').classList.remove('hidden');
+            document.getElementById('createTopicBtn').classList.add('hidden');
+            
+            // Simulate waiting for partner
+            setTimeout(() => {
+                simulatePartnerJoin();
+            }, 3000);
+        });
+
+        document.getElementById('copyLinkBtn').addEventListener('click', () => {
+            const linkInput = document.getElementById('shareLink');
+            linkInput.select();
+            document.execCommand('copy');
+            
+            const btn = document.getElementById('copyLinkBtn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+            }, 2000);
+        });
+
+        document.getElementById('agreeTopic').addEventListener('click', () => {
+            sessionData.topicAgreed = true;
+            proceedToPrivateInputs();
+        });
+
+        document.getElementById('modifyTopic').addEventListener('click', () => {
+            document.getElementById('modifyTopicSection').classList.remove('hidden');
+        });
+
+        document.getElementById('submitModification').addEventListener('click', () => {
+            const modification = document.getElementById('topicModification').value.trim();
+            if (!modification) {
+                alert('Please enter a modification');
+                return;
+            }
+            
+            // In real app, this would send to other participant
+            alert('Modification sent to other participant for review');
+            document.getElementById('modifyTopicSection').classList.add('hidden');
+        });
+
+        document.getElementById('cancelModification').addEventListener('click', () => {
+            document.getElementById('modifyTopicSection').classList.add('hidden');
+            document.getElementById('topicModification').value = '';
+        });
+
         submitBtn.addEventListener('click', () => {
-            userAInputs.objectives = document.getElementById('objectives').value;
-            userAInputs.mustHaves = document.getElementById('mustHaves').value;
-            userAInputs.constraints = document.getElementById('constraints').value;
+            userInputs.objectives = document.getElementById('objectives').value;
+            userInputs.mustHaves = document.getElementById('mustHaves').value;
+            userInputs.constraints = document.getElementById('constraints').value;
             
             // Basic validation
-            if (!userAInputs.objectives || !userAInputs.mustHaves || !userAInputs.constraints) {
+            if (!userInputs.objectives || !userInputs.mustHaves || !userInputs.constraints) {
                 alert("Please fill out all your private input fields.");
                 return;
             }
 
             // Transition to waiting screen
-            userInputScreen.classList.add('hidden');
-            waitingScreen.classList.remove('hidden');
+            showScreen(waitingScreen);
             updateStepIndicator(2);
 
             // Simulate negotiation
             setTimeout(() => {
                 runNegotiation();
-            }, 4000); // Wait 4 seconds to simulate processing
+            }, 4000);
         });
 
+        function joinExistingSession() {
+            // Simulate getting session data
+            sessionData.topic = "How to handle childcare tomorrow and Friday after the babysitter canceled?";
+            sessionData.participants = ['Partner'];
+            
+            showScreen(topicAgreementScreen);
+            updateTopicAgreementScreen();
+        }
+
+        function simulatePartnerJoin() {
+            sessionData.participants.push('Partner');
+            showScreen(topicAgreementScreen);
+            updateTopicAgreementScreen();
+        }
+
+        function updateTopicAgreementScreen() {
+            document.getElementById('proposedTopic').textContent = sessionData.topic;
+            
+            const participantsList = document.getElementById('participantsList');
+            participantsList.innerHTML = '';
+            
+            // Add current user
+            const userDiv = document.createElement('div');
+            userDiv.className = 'flex items-center space-x-2 mb-2';
+            userDiv.innerHTML = `
+                <i class="fas fa-user text-indigo-600"></i>
+                <span class="font-medium">${sessionData.userName}</span>
+                <span class="text-green-600 text-sm">(You - Connected)</span>
+            `;
+            participantsList.appendChild(userDiv);
+            
+            // Add other participants
+            sessionData.participants.forEach(participant => {
+                const participantDiv = document.createElement('div');
+                participantDiv.className = 'flex items-center space-x-2 mb-2';
+                participantDiv.innerHTML = `
+                    <i class="fas fa-user text-gray-600"></i>
+                    <span class="font-medium">${participant}</span>
+                    <span class="text-green-600 text-sm">(Connected)</span>
+                `;
+                participantsList.appendChild(participantDiv);
+            });
+        }
+
+        function proceedToPrivateInputs() {
+            document.getElementById('agreedTopic').textContent = sessionData.topic;
+            showScreen(userInputScreen);
+            updateStepIndicator(1);
+        }
+
         async function runNegotiation() {
-            const topic = document.getElementById('topic').value || "the current issue";
+            const topic = sessionData.topic;
             
             // In a real app, this prompt would be sent to a secure backend
             const prompt = `
                 Simulate a negotiation between two AIs based on user inputs for the topic: "${topic}".
-                User A wants: ${userAInputs.objectives}. Non-negotiable: ${userAInputs.mustHaves}. Constraints: ${userAInputs.constraints}.
-                User B wants: ${userBInputs.objectives}. Non-negotiable: ${userBInputs.mustHaves}. Constraints: ${userBInputs.constraints}.
+                User A wants: ${userInputs.objectives}. Non-negotiable: ${userInputs.mustHaves}. Constraints: ${userInputs.constraints}.
+                User B wants: ${mockPartnerData.objectives}. Non-negotiable: ${mockPartnerData.mustHaves}. Constraints: ${mockPartnerData.constraints}.
                 
                 Generate a JSON object with two keys:
                 1. "backchannel": An array of 5 short, neutral summary points of the negotiation process.
@@ -250,10 +492,8 @@
                 backchannelDiv.appendChild(p);
             });
 
-
             // Transition to results screen
-            waitingScreen.classList.add('hidden');
-            resultsScreen.classList.remove('hidden');
+            showScreen(resultsScreen);
             updateStepIndicator(3);
         }
 
@@ -292,28 +532,44 @@
         }
         
         function startOver() {
-            // Reset state and UI to the beginning
-            document.getElementById('topic').value = '';
+            // Reset all state
+            sessionData = {
+                sessionId: null,
+                userName: '',
+                topic: '',
+                topicAgreed: false,
+                participants: [],
+                isCreator: false
+            };
+            
+            // Clear form fields
+            document.getElementById('userName').value = '';
+            document.getElementById('topicInput').value = '';
             document.getElementById('objectives').value = '';
             document.getElementById('mustHaves').value = '';
             document.getElementById('constraints').value = '';
             
-            resultsScreen.classList.add('hidden');
-            userInputScreen.classList.remove('hidden');
+            // Reset URL
+            window.history.pushState({}, '', window.location.pathname);
+            
+            // Go back to login
+            showScreen(loginScreen);
             updateStepIndicator(1);
         }
 
-        // Initial state
-        function prefill() {
-            document.getElementById('topic').value = "How to handle childcare tomorrow and Friday after the babysitter canceled?";
-            document.getElementById('objectives').value = "Ensure I can attend my critical pitch calls in the afternoon and maximize my work time.";
-            document.getElementById('mustHaves').value = "I must be completely free and uninterrupted from 2-5 PM on Thursday for my calls.";
-            document.getElementById('constraints').value = "I need some prep time beforehand. I also feel it's unfair when I handle all morning duties while my partner sleeps in.";
-        }
-
+        // Initialize app
         window.onload = () => {
-             updateStepIndicator(1);
-             prefill();
+            updateStepIndicator(1);
+            
+            // Check if joining existing session
+            const existingSession = getSessionFromURL();
+            if (existingSession) {
+                // Show login for joining session
+                showScreen(loginScreen);
+            } else {
+                // Normal flow - show login
+                showScreen(loginScreen);
+            }
         }
 
     </script>
