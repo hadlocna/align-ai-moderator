@@ -113,9 +113,9 @@
                             </button>
                         </div>
                         <p class="text-sm text-blue-600 mt-2">This link will establish a WebRTC peer-to-peer connection!</p>
-                        <div class="mt-3 p-2 bg-blue-100 rounded text-xs text-blue-800">
+                        <div class="mt-3 p-2 bg-green-100 rounded text-xs text-green-800">
                             <i class="fas fa-satellite-dish mr-1"></i>
-                            <strong>Demo Mode:</strong> Uses localStorage to simulate WebRTC for testing. Real WebRTC would work across different devices/networks!
+                            <strong>Real WebRTC:</strong> Direct browser-to-browser connection! Check debug logs for connection details.
                         </div>
                     </div>
                 </div>
@@ -152,9 +152,16 @@
                         <h3 class="font-semibold mb-2">WebRTC Session:</h3>
                         <div id="participantsList"></div>
                         <div class="mt-4 pt-3 border-t border-gray-200">
-                            <button id="testConnectionBtn" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition">
+                            <button id="testConnectionBtn" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition mr-2">
                                 <i class="fas fa-satellite-dish mr-1"></i>Test P2P Connection
                             </button>
+                            <button id="toggleDebugBtn" class="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 transition">
+                                <i class="fas fa-bug mr-1"></i>Show Debug
+                            </button>
+                        </div>
+                        <div id="debugPanel" class="hidden mt-4 p-3 bg-gray-800 text-green-400 rounded text-xs font-mono max-h-40 overflow-y-auto">
+                            <div class="font-bold text-white mb-2">WebRTC Debug Logs:</div>
+                            <div id="debugLogs"></div>
                         </div>
                     </div>
                 </div>
@@ -266,13 +273,32 @@
             partnerName: null
         };
 
-        // WebRTC configuration
+        // Real WebRTC Configuration with multiple STUN servers
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun.services.mozilla.com' }
+            ],
+            iceCandidatePoolSize: 10
         };
+
+        // Signaling keys for localStorage-based signaling
+        const SIGNALING_PREFIX = 'webrtc_signal_';
+        const OFFER_KEY = (sessionId) => `${SIGNALING_PREFIX}${sessionId}_offer`;
+        const ANSWER_KEY = (sessionId) => `${SIGNALING_PREFIX}${sessionId}_answer`;
+        const ICE_KEY = (sessionId, id) => `${SIGNALING_PREFIX}${sessionId}_ice_${id}`;
+        
+        // Development logs for troubleshooting
+        let debugLogs = [];
+        
+        function addDebugLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            debugLogs.push({ timestamp, message, type });
+            updateDebugPanel();
+            console.log(`[${timestamp}] ${message}`);
+        }
 
         // Screen elements
         const loginScreen = document.getElementById('loginScreen');
@@ -353,8 +379,10 @@
         function sendToPeer(message) {
             if (sessionData.dataChannel && sessionData.dataChannel.readyState === 'open') {
                 sessionData.dataChannel.send(JSON.stringify(message));
+                addDebugLog(`Sent message: ${message.type}`, 'info');
                 return true;
             }
+            addDebugLog('Cannot send message - no WebRTC connection', 'warning');
             showNotification('No WebRTC connection - message not sent', 'warning');
             return false;
         }
@@ -687,23 +715,155 @@
         
         async function establishConnection() {
             try {
+                addDebugLog('Starting WebRTC connection process...', 'info');
+                
                 if (sessionData.isCreator) {
-                    // Creator creates data channel 
-                    sessionData.dataChannel = sessionData.peerConnection.createDataChannel('negotiate');
-                    setupDataChannel(sessionData.dataChannel);
+                    // Creator: Create offer and wait for joiner
+                    await createOffer();
                     
-                    // For demo purposes, simulate successful connection after sharing
-                    setTimeout(() => {
-                        showNotification('Waiting for partner to join via shared link...', 'info');
-                    }, 1000);
+                    // Start polling for answer
+                    pollForAnswer();
                     
                 } else {
-                    // Joiner - simulate joining the connection
-                    simulateJoinerConnection();
+                    // Joiner: Look for offer and create answer
+                    pollForOffer();
                 }
             } catch (error) {
-                console.error('Error establishing connection:', error);
+                addDebugLog(`Error establishing connection: ${error.message}`, 'error');
             }
+        }
+        
+        async function createOffer() {
+            try {
+                addDebugLog('Creating WebRTC offer...', 'info');
+                
+                // Create data channel
+                sessionData.dataChannel = sessionData.peerConnection.createDataChannel('negotiate', {
+                    ordered: true
+                });
+                setupDataChannel(sessionData.dataChannel);
+                
+                // Create offer
+                const offer = await sessionData.peerConnection.createOffer();
+                await sessionData.peerConnection.setLocalDescription(offer);
+                
+                // Store offer in localStorage for signaling
+                localStorage.setItem(OFFER_KEY(sessionData.sessionId), JSON.stringify({
+                    offer: offer,
+                    creator: sessionData.userName,
+                    timestamp: Date.now()
+                }));
+                
+                addDebugLog('Offer created and stored. Waiting for joiner...', 'success');
+                showNotification('WebRTC offer created. Waiting for partner to join...', 'info');
+                
+            } catch (error) {
+                addDebugLog(`Error creating offer: ${error.message}`, 'error');
+            }
+        }
+        
+        function pollForAnswer() {
+            const checkForAnswer = () => {
+                const answerData = localStorage.getItem(ANSWER_KEY(sessionData.sessionId));
+                if (answerData) {
+                    try {
+                        const { answer, joiner } = JSON.parse(answerData);
+                        addDebugLog(`Answer received from ${joiner}`, 'success');
+                        sessionData.partnerName = joiner;
+                        
+                        // Set remote description
+                        sessionData.peerConnection.setRemoteDescription(answer);
+                        
+                        // Start polling for ICE candidates
+                        pollForIceCandidates();
+                        
+                        return; // Stop polling
+                    } catch (error) {
+                        addDebugLog(`Error processing answer: ${error.message}`, 'error');
+                    }
+                }
+                
+                // Continue polling
+                setTimeout(checkForAnswer, 1000);
+            };
+            checkForAnswer();
+        }
+        
+        function pollForOffer() {
+            const checkForOffer = () => {
+                const offerData = localStorage.getItem(OFFER_KEY(sessionData.sessionId));
+                if (offerData) {
+                    try {
+                        const { offer, creator } = JSON.parse(offerData);
+                        addDebugLog(`Offer received from ${creator}`, 'success');
+                        sessionData.partnerName = creator;
+                        
+                        // Set remote description and create answer
+                        createAnswer(offer);
+                        
+                        return; // Stop polling
+                    } catch (error) {
+                        addDebugLog(`Error processing offer: ${error.message}`, 'error');
+                    }
+                }
+                
+                // Continue polling
+                setTimeout(checkForOffer, 1000);
+            };
+            checkForOffer();
+        }
+        
+        async function createAnswer(offer) {
+            try {
+                addDebugLog('Creating WebRTC answer...', 'info');
+                
+                await sessionData.peerConnection.setRemoteDescription(offer);
+                const answer = await sessionData.peerConnection.createAnswer();
+                await sessionData.peerConnection.setLocalDescription(answer);
+                
+                // Store answer
+                localStorage.setItem(ANSWER_KEY(sessionData.sessionId), JSON.stringify({
+                    answer: answer,
+                    joiner: sessionData.userName,
+                    timestamp: Date.now()
+                }));
+                
+                addDebugLog('Answer created and stored', 'success');
+                
+                // Start polling for ICE candidates
+                pollForIceCandidates();
+                
+            } catch (error) {
+                addDebugLog(`Error creating answer: ${error.message}`, 'error');
+            }
+        }
+        
+        function pollForIceCandidates() {
+            const processedCandidates = new Set();
+            
+            const checkForCandidates = () => {
+                Object.keys(localStorage).forEach(async key => {
+                    if (key.startsWith(ICE_KEY(sessionData.sessionId, '').slice(0, -1)) && !processedCandidates.has(key)) {
+                        try {
+                            const candidateData = JSON.parse(localStorage.getItem(key));
+                            if (candidateData.sender !== sessionData.userName) {
+                                addDebugLog(`Adding ICE candidate from ${candidateData.sender}`, 'info');
+                                await sessionData.peerConnection.addIceCandidate(candidateData.candidate);
+                                processedCandidates.add(key);
+                            }
+                        } catch (error) {
+                            addDebugLog(`Error processing ICE candidate: ${error.message}`, 'error');
+                        }
+                    }
+                });
+                
+                // Continue polling while not connected
+                if (sessionData.connectionState !== 'connected') {
+                    setTimeout(checkForCandidates, 500);
+                }
+            };
+            
+            checkForCandidates();
         }
         
         function showOfferForSharing(offer) {
@@ -718,79 +878,35 @@
             showNotification('Updated share link with WebRTC connection info', 'success');
         }
         
-        function simulateJoinerConnection() {
-            // Simulate the joiner establishing connection
-            showNotification('Establishing WebRTC connection...', 'info');
-            
-            setTimeout(() => {
-                // Create a mock data channel for demo
-                sessionData.dataChannel = {
-                    readyState: 'open',
-                    send: (data) => {
-                        console.log('Mock WebRTC send:', data);
-                        
-                        // Use localStorage to simulate cross-tab messaging
-                        const messageData = {
-                            sessionId: sessionData.sessionId,
-                            message: JSON.parse(data),
-                            sender: sessionData.userName,
-                            timestamp: Date.now()
-                        };
-                        localStorage.setItem('webrtc_message_' + Date.now(), JSON.stringify(messageData));
-                    },
-                    close: () => console.log('Mock connection closed')
-                };
+        function cleanupSignaling() {
+            // Clean up signaling data after successful connection
+            try {
+                localStorage.removeItem(OFFER_KEY(sessionData.sessionId));
+                localStorage.removeItem(ANSWER_KEY(sessionData.sessionId));
                 
-                sessionData.connectionState = 'connected';
-                updateConnectionStatus();
+                // Clean up ICE candidates
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith(ICE_KEY(sessionData.sessionId, '').slice(0, -1))) {
+                        localStorage.removeItem(key);
+                    }
+                });
                 
-                // Send join notification
-                const joinMessage = {
-                    type: 'userJoined',
-                    userName: sessionData.userName
-                };
-                
-                showNotification('WebRTC Demo Connected!', 'success');
-                
-                // Send join message
-                if (sessionData.dataChannel) {
-                    sessionData.dataChannel.send(JSON.stringify(joinMessage));
-                }
-                
-            }, 2000);
+                addDebugLog('Signaling data cleaned up', 'info');
+            } catch (error) {
+                addDebugLog(`Error cleaning up signaling: ${error.message}`, 'error');
+            }
         }
         
-        // Listen for demo WebRTC messages via localStorage (simulating real WebRTC)
-        window.addEventListener('storage', (e) => {
-            // Handle WebRTC messages from other tabs
-            if (e.key && e.key.startsWith('webrtc_message_') && e.newValue) {
-                try {
-                    const data = JSON.parse(e.newValue);
-                    if (data.sessionId === sessionData.sessionId && data.sender !== sessionData.userName) {
-                        // Simulate receiving WebRTC message from peer
-                        console.log('Received WebRTC message:', data.message);
-                        handlePeerMessage(data.message);
-                        
-                        // Clean up the localStorage message
-                        setTimeout(() => {
-                            localStorage.removeItem(e.key);
-                        }, 500);
-                    }
-                } catch (error) {
-                    console.error('Error handling storage event:', error);
-                }
-            }
-        });
-        
-        // Cleanup old WebRTC messages periodically
+        // Cleanup old signaling data periodically
         setInterval(() => {
             const now = Date.now();
             Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('webrtc_message_')) {
+                if (key.startsWith(SIGNALING_PREFIX)) {
                     try {
-                        const timestamp = parseInt(key.split('_')[2]);
-                        if (now - timestamp > 10000) { // Remove messages older than 10 seconds
+                        const data = JSON.parse(localStorage.getItem(key));
+                        if (data.timestamp && now - data.timestamp > 60000) { // Remove data older than 1 minute
                             localStorage.removeItem(key);
+                            addDebugLog(`Cleaned up old signaling data: ${key}`, 'info');
                         }
                     } catch (e) {
                         // Remove malformed keys
@@ -798,7 +914,7 @@
                     }
                 }
             });
-        }, 5000);
+        }, 10000);
 
         function updateTopicAgreementScreen(creatorName = 'Creator') {
             document.getElementById('proposedTopic').textContent = sessionData.topic;
@@ -969,7 +1085,7 @@
                 showScreen(loginScreen);
             }
             
-            // Add test connection button listener with delegation
+            // Add button listeners with delegation
             document.addEventListener('click', (e) => {
                 if (e.target && e.target.id === 'testConnectionBtn') {
                     e.preventDefault();
@@ -978,9 +1094,27 @@
                             type: 'ping',
                             userName: sessionData.userName
                         });
-                        showNotification('Test ping sent via WebRTC demo!', 'info');
+                        showNotification('Test ping sent via real WebRTC!', 'info');
+                        addDebugLog('Test ping sent to peer', 'info');
                     } else {
-                        showNotification('WebRTC demo not connected yet', 'warning');
+                        showNotification('WebRTC not connected yet', 'warning');
+                        addDebugLog('Cannot send ping - no connection', 'warning');
+                    }
+                }
+                
+                if (e.target && e.target.id === 'toggleDebugBtn') {
+                    e.preventDefault();
+                    const debugPanel = document.getElementById('debugPanel');
+                    const btn = e.target;
+                    if (debugPanel) {
+                        if (debugPanel.classList.contains('hidden')) {
+                            debugPanel.classList.remove('hidden');
+                            btn.innerHTML = '<i class="fas fa-bug mr-1"></i>Hide Debug';
+                            updateDebugPanel();
+                        } else {
+                            debugPanel.classList.add('hidden');
+                            btn.innerHTML = '<i class="fas fa-bug mr-1"></i>Show Debug';
+                        }
                     }
                 }
             });
