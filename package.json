@@ -1,0 +1,24 @@
+{
+  "name": "align-ai-moderator",
+  "version": "1.0.0",
+  "description": "A private, fair way to find agreement through AI-to-AI moderated negotiations",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "start": "python3 -m http.server 8000"
+  },
+  "keywords": [
+    "ai",
+    "negotiation",
+    "privacy",
+    "agreement",
+    "moderation"
+  ],
+  "author": "Nathan Hadlock",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nathanhadlock/align-ai-moderator.git"
+  },
+  "homepage": "https://github.com/nathanhadlock/align-ai-moderator#readme"
+}

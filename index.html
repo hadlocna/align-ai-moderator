@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Align - Secure Negotiation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f8fc;
+        }
+        .step-active {
+            border-color: #4f46e5;
+            color: #4f46e5;
+        }
+        .step-done {
+            border-color: #16a34a;
+            color: #16a34a;
+            background-color: #f0fdf4;
+        }
+        .privacy-card {
+            background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .loader {
+            border-top-color: #4f46e5;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        
+        <header class="text-center mb-8">
+            <div class="flex items-center justify-center space-x-3 mb-4">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 28C8 18, 12 8, 16 4" stroke="#4F46E5" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M28 28C24 18, 20 8, 16 4" stroke="#818CF8" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M10 18H22" stroke="#374151" stroke-width="3.5" stroke-linecap="round"/>
+                </svg>
+                <h1 class="text-4xl font-bold text-gray-900">Align</h1>
+            </div>
+            <p class="text-lg text-gray-600">A private, fair way to find agreement.</p>
+        </header>
+
+        <!-- Step Indicator -->
+        <div class="flex items-center justify-center space-x-4 md:space-x-8 my-10">
+            <div id="step1Indicator" class="step-indicator step-active flex items-center flex-col md:flex-row text-center space-x-2">
+                <div class="border-2 rounded-full w-8 h-8 flex items-center justify-center font-bold">1</div>
+                <span class="font-semibold mt-2 md:mt-0">Your View</span>
+            </div>
+            <div class="flex-grow h-px bg-gray-300"></div>
+            <div id="step2Indicator" class="step-indicator flex items-center flex-col md:flex-row text-center space-x-2 text-gray-400">
+                <div class="border-2 border-gray-300 rounded-full w-8 h-8 flex items-center justify-center font-bold">2</div>
+                <span class="font-semibold mt-2 md:mt-0">AI Negotiation</span>
+            </div>
+            <div class="flex-grow h-px bg-gray-300"></div>
+            <div id="step3Indicator" class="step-indicator flex items-center flex-col md:flex-row text-center space-x-2 text-gray-400">
+                <div class="border-2 border-gray-300 rounded-full w-8 h-8 flex items-center justify-center font-bold">3</div>
+                <span class="font-semibold mt-2 md:mt-0">Agreement</span>
+            </div>
+        </div>
+
+        <!-- Screen Container -->
+        <div id="screenContainer">
+            <!-- Screen 1: User Input -->
+            <div id="userInputScreen" class="fade-in">
+                <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
+                    <label for="topic" class="block text-lg font-semibold text-gray-700 mb-2">What are we deciding today?</label>
+                    <input type="text" id="topic" placeholder="e.g., How to split chores for the week" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+                
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-1 text-indigo-600">Your Private Inputs</h2>
+                    <p class="text-gray-500 mb-6">Only you and your personal AI will see this. Be open and honest.</p>
+                    <div class="space-y-6">
+                        <div>
+                            <label class="font-semibold text-lg">1. Your Ideal Outcome</label>
+                            <textarea id="objectives" placeholder="What's the best possible result for you?" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-lg">2. Your Must-Haves (Red Lines)</label>
+                            <textarea id="mustHaves" placeholder="What is absolutely non-negotiable?" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-lg">3. Key Facts & Constraints</label>
+                            <textarea id="constraints" placeholder="Any budget, time limits, or important facts?" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center my-8">
+                    <button id="submitBtn" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-indigo-700 transition-transform transform hover:scale-105 disabled:bg-indigo-300 disabled:cursor-not-allowed">
+                        Send to My AI
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Screen 2: Waiting & Privacy Explanation -->
+            <div id="waitingScreen" class="hidden fade-in">
+                <div class="text-center p-8">
+                    <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mx-auto"></div>
+                    <h2 class="text-3xl font-bold mt-6">Your AI is Negotiating</h2>
+                    <p class="text-lg text-gray-600 mt-2">This process is secure and private. A fair agreement is being crafted.</p>
+                </div>
+
+                <div class="mt-8 privacy-card border border-indigo-200 p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-2xl font-bold text-gray-800 text-center">Our Privacy Commitment</h3>
+                    <div class="mt-6 grid md:grid-cols-3 gap-6 text-center">
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white rounded-full p-4 shadow-md">
+                                <i class="fas fa-user-shield fa-2x text-indigo-600"></i>
+                            </div>
+                            <h4 class="font-semibold text-lg mt-3">Your Inputs are Private</h4>
+                            <p class="text-gray-600 mt-1">Your partner never sees your objectives or red lines. Only your AI advocate has access.</p>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white rounded-full p-4 shadow-md">
+                                <i class="fas fa-cogs fa-2x text-indigo-600"></i>
+                            </div>
+                            <h4 class="font-semibold text-lg mt-3">Secure AI-to-AI Channel</h4>
+                            <p class="text-gray-600 mt-1">The AIs negotiate using an encrypted backchannel. They only share what's needed to find common ground.</p>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white rounded-full p-4 shadow-md">
+                                <i class="fas fa-file-signature fa-2x text-indigo-600"></i>
+                            </div>
+                            <h4 class="font-semibold text-lg mt-3">Only the Result is Shared</h4>
+                            <p class="text-gray-600 mt-1">You both receive the final, mutually-agreed-upon plan. The private details that led to it are discarded.</p>
+                        </div>
+                    </div>
+                     <p class="text-center text-sm text-gray-500 mt-6">Our system is built on the principle of Zero-Knowledge, ensuring your negotiation is provably private.</p>
+                </div>
+            </div>
+
+            <!-- Screen 3: Results -->
+            <div id="resultsScreen" class="hidden fade-in">
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+                    <h2 class="text-3xl font-bold mb-4 text-center">Proposed Agreement</h2>
+                    <div id="agreement" class="prose max-w-none prose-lg">
+                        <!-- Agreement will appear here -->
+                    </div>
+                </div>
+                 <div class="mt-8 bg-white p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4">AI Backchannel Insights</h3>
+                    <p class="text-gray-600 mb-4">Here's a transparent summary of how the AIs reached this conclusion, without revealing private inputs.</p>
+                    <div id="backchannel" class="space-y-3 text-sm h-48 overflow-y-auto pr-2 border-t pt-4">
+                        <!-- Backchannel summary will appear here -->
+                    </div>
+                </div>
+                <div class="text-center mt-8 space-x-4">
+                     <button onclick="startOver()" class="bg-gray-200 text-gray-800 font-bold py-3 px-8 rounded-lg hover:bg-gray-300 transition">Start New Negotiation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const step1Indicator = document.getElementById('step1Indicator');
+        const step2Indicator = document.getElementById('step2Indicator');
+        const step3Indicator = document.getElementById('step3Indicator');
+
+        const userInputScreen = document.getElementById('userInputScreen');
+        const waitingScreen = document.getElementById('waitingScreen');
+        const resultsScreen = document.getElementById('resultsScreen');
+
+        const submitBtn = document.getElementById('submitBtn');
+        const agreementDiv = document.getElementById('agreement');
+        const backchannelDiv = document.getElementById('backchannel');
+        
+        // Mock user data. In a real app, this would be dynamic.
+        const userAInputs = { objectives: '', mustHaves: '', constraints: '' };
+        // In a real app, user B would have their own interface. We'll mock their data for this demo.
+        const userBInputs = { 
+            objectives: "I need to complete my 2 presentation for Toto, and background research for Salina",
+            mustHaves: "I need at least 4 hours of uniterrupted work, however this can be broken up",
+            constraints: "I don't mind paying for a babysitter, but I can't find one and my partner isn't helping, we need to find a solution that's fair to both of us."
+        };
+
+        function updateStepIndicator(step) {
+            step1Indicator.classList.remove('step-active', 'step-done');
+            step2Indicator.classList.remove('step-active', 'step-done');
+            step3Indicator.classList.remove('step-active', 'step-done');
+
+            if (step >= 1) step1Indicator.classList.add('step-done');
+            if (step >= 2) step2Indicator.classList.add('step-done');
+            
+            if (step === 1) step1Indicator.classList.add('step-active');
+            if (step === 2) step2Indicator.classList.add('step-active');
+            if (step === 3) step3Indicator.classList.add('step-active');
+        }
+        
+        submitBtn.addEventListener('click', () => {
+            userAInputs.objectives = document.getElementById('objectives').value;
+            userAInputs.mustHaves = document.getElementById('mustHaves').value;
+            userAInputs.constraints = document.getElementById('constraints').value;
+            
+            // Basic validation
+            if (!userAInputs.objectives || !userAInputs.mustHaves || !userAInputs.constraints) {
+                alert("Please fill out all your private input fields.");
+                return;
+            }
+
+            // Transition to waiting screen
+            userInputScreen.classList.add('hidden');
+            waitingScreen.classList.remove('hidden');
+            updateStepIndicator(2);
+
+            // Simulate negotiation
+            setTimeout(() => {
+                runNegotiation();
+            }, 4000); // Wait 4 seconds to simulate processing
+        });
+
+        async function runNegotiation() {
+            const topic = document.getElementById('topic').value || "the current issue";
+            
+            // In a real app, this prompt would be sent to a secure backend
+            const prompt = `
+                Simulate a negotiation between two AIs based on user inputs for the topic: "${topic}".
+                User A wants: ${userAInputs.objectives}. Non-negotiable: ${userAInputs.mustHaves}. Constraints: ${userAInputs.constraints}.
+                User B wants: ${userBInputs.objectives}. Non-negotiable: ${userBInputs.mustHaves}. Constraints: ${userBInputs.constraints}.
+                
+                Generate a JSON object with two keys:
+                1. "backchannel": An array of 5 short, neutral summary points of the negotiation process.
+                2. "agreement": A final proposed agreement as a well-structured HTML string.
+            `;
+
+            const apiResponse = await mockLLMCall(prompt);
+            
+            agreementDiv.innerHTML = apiResponse.agreement;
+            backchannelDiv.innerHTML = '';
+             apiResponse.backchannel.forEach(item => {
+                const p = document.createElement('p');
+                p.className = 'p-2 bg-gray-100 rounded-md';
+                p.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-2"></i> ${item}`;
+                backchannelDiv.appendChild(p);
+            });
+
+
+            // Transition to results screen
+            waitingScreen.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            updateStepIndicator(3);
+        }
+
+        async function mockLLMCall(prompt) {
+            console.log("Mock LLM Prompt:", prompt);
+            // This mock response is tailored to the childcare scenario
+            return {
+                "backchannel": [
+                    "Identified User A's critical afternoon time block as a primary constraint.",
+                    "Recognized User B's need for a consolidated 4-hour work period.",
+                    "Cross-referenced both schedules to find non-overlapping availability.",
+                    "Proposed a time-swapping solution to ensure fairness and equal work time.",
+                    "Confirmed that the proposed solution respects all non-negotiable 'red lines' for both parties."
+                ],
+                "agreement": `
+                    <h4 class="text-xl font-bold">Agreement: Childcare for Thursday & Friday</h4>
+                    <hr class="my-4">
+                    <h5><strong>Principles:</strong></h5>
+                    <p>This plan ensures both partners get the focused work time they need, acknowledging that both roles are equally important. It is designed to be fair, equitable, and predictable.</p>
+                    <br>
+                    <h5><strong>Thursday's Plan:</strong></h5>
+                    <ul class="list-disc pl-6">
+                        <li><strong>9:00 AM - 1:00 PM:</strong> Partner B has 4 hours of uninterrupted work. Partner A handles childcare.</li>
+                        <li><strong>1:00 PM - 5:00 PM:</strong> Partner A has uninterrupted time for work/calls. Partner B handles childcare.</li>
+                    </ul>
+                    <br>
+                    <h5><strong>Friday's Plan:</strong></h5>
+                     <ul class="list-disc pl-6">
+                        <li><strong>9:00 AM - 1:00 PM:</strong> Partner A has 4 hours of uninterrupted work. Partner B handles childcare.</li>
+                    </ul>
+                    <br>
+                    <h5><strong>Review:</strong></h5>
+                    <p>Let's check in Thursday evening to confirm this plan feels balanced and works for Friday.</p>
+                `
+            };
+        }
+        
+        function startOver() {
+            // Reset state and UI to the beginning
+            document.getElementById('topic').value = '';
+            document.getElementById('objectives').value = '';
+            document.getElementById('mustHaves').value = '';
+            document.getElementById('constraints').value = '';
+            
+            resultsScreen.classList.add('hidden');
+            userInputScreen.classList.remove('hidden');
+            updateStepIndicator(1);
+        }
+
+        // Initial state
+        function prefill() {
+            document.getElementById('topic').value = "How to handle childcare tomorrow and Friday after the babysitter canceled?";
+            document.getElementById('objectives').value = "Ensure I can attend my critical pitch calls in the afternoon and maximize my work time.";
+            document.getElementById('mustHaves').value = "I must be completely free and uninterrupted from 2-5 PM on Thursday for my calls.";
+            document.getElementById('constraints').value = "I need some prep time beforehand. I also feel it's unfair when I handle all morning duties while my partner sleeps in.";
+        }
+
+        window.onload = () => {
+             updateStepIndicator(1);
+             prefill();
+        }
+
+    </script>
+</body>
+</html>
