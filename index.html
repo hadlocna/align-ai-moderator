@@ -80,7 +80,7 @@
             <div id="loginScreen" class="fade-in">
                 <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md mx-auto">
                     <h2 class="text-3xl font-bold mb-6 text-indigo-600">Welcome to Align</h2>
-                    <p class="text-gray-600 mb-6">Enter your name to begin a negotiation session</p>
+                    <p id="loginMessage" class="text-gray-600 mb-6">Enter your name to begin a negotiation session</p>
                     <div class="space-y-4">
                         <input type="text" id="userName" placeholder="Your name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition">
                         <button id="loginBtn" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition">Start Session</button>
@@ -112,12 +112,7 @@
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
-                        <p class="text-sm text-blue-600 mt-2">Waiting for the other person to join and agree on the topic...</p>
-                        <div class="mt-3">
-                            <button id="checkForPartnerBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm">
-                                <i class="fas fa-sync-alt mr-1"></i>Check for Partner
-                            </button>
-                        </div>
+                        <p class="text-sm text-blue-600 mt-2">When they click this link, they'll be brought directly to the topic agreement screen!</p>
                     </div>
                 </div>
             </div>
@@ -249,21 +244,14 @@
     </div>
 
     <script>
-        // Session management with localStorage persistence
+        // Stateless session management - everything in URL
         let sessionData = {
             sessionId: null,
             userName: '',
             topic: '',
             topicAgreed: false,
-            participants: [],
-            isCreator: false,
-            partnerJoined: false,
-            createdAt: null
+            isCreator: false
         };
-
-        // Session storage keys
-        const SESSIONS_KEY = 'align_sessions';
-        const USER_SESSION_KEY = 'align_user_session';
 
         // Screen elements
         const loginScreen = document.getElementById('loginScreen');
@@ -298,48 +286,13 @@
             return Math.random().toString(36).substr(2, 9);
         }
 
-        function saveSessionToStorage(session) {
-            try {
-                const sessions = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '{}');
-                sessions[session.sessionId] = session;
-                localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-                
-                // Also save user's current session
-                localStorage.setItem(USER_SESSION_KEY, JSON.stringify(session));
-            } catch (e) {
-                console.error('Failed to save session:', e);
-            }
-        }
-
-        function loadSessionFromStorage(sessionId) {
-            try {
-                const sessions = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '{}');
-                return sessions[sessionId] || null;
-            } catch (e) {
-                console.error('Failed to load session:', e);
-                return null;
-            }
-        }
-
-        function checkForPartner(sessionId) {
-            const session = loadSessionFromStorage(sessionId);
-            if (session && session.participants.length > 1) {
-                return true;
-            }
-            return false;
-        }
-
-        function pollForPartner() {
-            const session = loadSessionFromStorage(sessionData.sessionId);
-            if (session && session.participants.length > 1 && !sessionData.partnerJoined) {
-                sessionData.partnerJoined = true;
-                sessionData.participants = session.participants;
-                showScreen(topicAgreementScreen);
-                updateTopicAgreementScreen();
-            } else if (sessionData.isCreator && !sessionData.partnerJoined) {
-                // Continue polling every 3 seconds for creators waiting for partners
-                setTimeout(pollForPartner, 3000);
-            }
+        // Simple session management - no persistent storage needed
+        function createSessionURL(sessionId, topic, creator) {
+            const params = new URLSearchParams();
+            params.set('session', sessionId);
+            params.set('topic', encodeURIComponent(topic));
+            params.set('creator', encodeURIComponent(creator));
+            return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
         }
 
         function getSessionFromURL() {
@@ -351,6 +304,22 @@
             const newURL = `${window.location.origin}${window.location.pathname}?session=${sessionId}`;
             window.history.pushState({}, '', newURL);
             return newURL;
+        }
+
+        function getSessionDataFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session');
+            const topic = urlParams.get('topic');
+            const creator = urlParams.get('creator');
+            
+            if (sessionId && topic) {
+                return {
+                    sessionId: sessionId,
+                    topic: decodeURIComponent(topic),
+                    creator: creator ? decodeURIComponent(creator) : 'Creator'
+                };
+            }
+            return null;
         }
 
         function showScreen(screenElement) {
@@ -384,9 +353,9 @@
             sessionData.userName = userName;
             
             // Check if joining existing session
-            const existingSession = getSessionFromURL();
-            if (existingSession) {
-                sessionData.sessionId = existingSession;
+            const urlData = getSessionDataFromURL();
+            if (urlData && urlData.sessionId) {
+                sessionData.sessionId = urlData.sessionId;
                 sessionData.isCreator = false;
                 joinExistingSession();
             } else {
@@ -404,31 +373,22 @@
             sessionData.topic = topic;
             sessionData.sessionId = generateSessionId();
             sessionData.isCreator = true;
-            sessionData.createdAt = new Date().toISOString();
-            sessionData.participants = [sessionData.userName];
             
-            // Save session to localStorage
-            saveSessionToStorage(sessionData);
-            
-            const shareURL = updateURL(sessionData.sessionId);
+            const shareURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName);
             document.getElementById('shareLink').value = shareURL;
             document.getElementById('sessionIdDisplay').textContent = sessionData.sessionId;
             document.getElementById('shareInfo').classList.remove('hidden');
             document.getElementById('shareSessionBtn').classList.remove('hidden');
             document.getElementById('createTopicBtn').classList.add('hidden');
             
-            // Start polling for partner to join
-            pollForPartner();
+            // Show instructions for sharing
+            setTimeout(() => {
+                alert('Share the link with the other person. Once they join, you\'ll both see the topic agreement screen.');
+            }, 500);
         });
 
         document.getElementById('checkForPartnerBtn').addEventListener('click', () => {
-            const btn = document.getElementById('checkForPartnerBtn');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Checking...';
-            
-            setTimeout(() => {
-                pollForPartner();
-                btn.innerHTML = '<i class="fas fa-sync-alt mr-1"></i>Check for Partner';
-            }, 1000);
+            alert('When the other person clicks your shared link, they will be brought directly to this topic agreement screen. No polling needed!');
         });
 
         document.getElementById('copyLinkBtn').addEventListener('click', () => {
@@ -446,15 +406,6 @@
 
         document.getElementById('agreeTopic').addEventListener('click', () => {
             sessionData.topicAgreed = true;
-            
-            // Save agreement to session
-            const session = loadSessionFromStorage(sessionData.sessionId);
-            if (session) {
-                session.topicAgreed = true;
-                session[`${sessionData.userName}_agreed`] = true;
-                saveSessionToStorage(session);
-            }
-            
             proceedToPrivateInputs();
         });
 
@@ -501,34 +452,25 @@
         });
 
         function joinExistingSession() {
-            const existingSession = loadSessionFromStorage(sessionData.sessionId);
+            const urlData = getSessionDataFromURL();
             
-            if (!existingSession) {
-                alert('Session not found or expired. Please ask the creator to share a new link.');
+            if (!urlData || !urlData.topic) {
+                alert('Invalid session link. Please ask the creator to share a new link.');
                 showScreen(loginScreen);
                 return;
             }
             
-            // Load session data
-            sessionData.topic = existingSession.topic;
+            // Load session data from URL
+            sessionData.topic = urlData.topic;
+            sessionData.sessionId = urlData.sessionId;
             sessionData.isCreator = false;
-            sessionData.createdAt = existingSession.createdAt;
             
-            // Add current user to participants if not already there
-            if (!existingSession.participants.includes(sessionData.userName)) {
-                existingSession.participants.push(sessionData.userName);
-                sessionData.participants = existingSession.participants;
-                saveSessionToStorage(existingSession);
-            } else {
-                sessionData.participants = existingSession.participants;
-            }
-            
-            // Show topic agreement screen
+            // Go directly to topic agreement since we have all needed data
             showScreen(topicAgreementScreen);
-            updateTopicAgreementScreen();
+            updateTopicAgreementScreen(urlData.creator);
         }
 
-        function updateTopicAgreementScreen() {
+        function updateTopicAgreementScreen(creatorName = 'Creator') {
             document.getElementById('proposedTopic').textContent = sessionData.topic;
             
             const participantsList = document.getElementById('participantsList');
@@ -544,36 +486,20 @@
             `;
             participantsList.appendChild(userDiv);
             
-            // Add other participants
-            sessionData.participants.forEach(participant => {
-                if (participant !== sessionData.userName) {
-                    const participantDiv = document.createElement('div');
-                    participantDiv.className = 'flex items-center space-x-2 mb-2';
-                    participantDiv.innerHTML = `
-                        <i class="fas fa-user text-gray-600"></i>
-                        <span class="font-medium">${participant}</span>
-                        <span class="text-green-600 text-sm">(Connected)</span>
-                    `;
-                    participantsList.appendChild(participantDiv);
-                }
-            });
-            
-            // Show different UI based on participant count
-            if (sessionData.participants.length < 2) {
-                const waitingDiv = document.createElement('div');
-                waitingDiv.className = 'text-center p-4 bg-yellow-50 rounded-lg mt-4';
-                waitingDiv.innerHTML = `
-                    <i class="fas fa-clock text-yellow-600 mb-2"></i>
-                    <p class="text-yellow-800 font-medium">Waiting for other participant to join...</p>
-                    <p class="text-yellow-600 text-sm mt-1">Share the link above to invite someone</p>
+            // Add the other participant
+            if (!sessionData.isCreator) {
+                const creatorDiv = document.createElement('div');
+                creatorDiv.className = 'flex items-center space-x-2 mb-2';
+                creatorDiv.innerHTML = `
+                    <i class="fas fa-user text-gray-600"></i>
+                    <span class="font-medium">${creatorName}</span>
+                    <span class="text-green-600 text-sm">(Session Creator)</span>
                 `;
-                participantsList.appendChild(waitingDiv);
-                
-                // Hide topic action buttons until partner joins
-                document.getElementById('topicActions').style.display = 'none';
-            } else {
-                document.getElementById('topicActions').style.display = 'block';
+                participantsList.appendChild(creatorDiv);
             }
+            
+            // Always show topic action buttons since we know both parties are present
+            document.getElementById('topicActions').style.display = 'block';
         }
 
         function proceedToPrivateInputs() {
@@ -653,14 +579,8 @@
                 userName: '',
                 topic: '',
                 topicAgreed: false,
-                participants: [],
-                isCreator: false,
-                partnerJoined: false,
-                createdAt: null
+                isCreator: false
             };
-            
-            // Clear local storage for user session
-            localStorage.removeItem(USER_SESSION_KEY);
             
             // Clear form fields
             document.getElementById('userName').value = '';
@@ -682,9 +602,11 @@
             updateStepIndicator(1);
             
             // Check if joining existing session
-            const existingSession = getSessionFromURL();
-            if (existingSession) {
-                // Show login for joining session
+            const urlData = getSessionDataFromURL();
+            if (urlData && urlData.sessionId) {
+                // Joining existing session - show login with context
+                document.getElementById('loginMessage').innerHTML = 
+                    `<i class="fas fa-users text-indigo-600 mr-2"></i>You're joining a negotiation session.<br><strong>Topic:</strong> ${urlData.topic || 'Loading...'}`;
                 showScreen(loginScreen);
             } else {
                 // Normal flow - show login
