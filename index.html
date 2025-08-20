@@ -331,7 +331,7 @@
 
         // URL and session management
         function generateSessionId() {
-            return Math.random().toString(36).substr(2, 9);
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
         }
 
         // WebSocket session creation with privacy-first signaling server
@@ -390,11 +390,25 @@
                         ? 'ws://localhost:8080'
                         : 'wss://align-ai-moderator.onrender.com';
                     
+                    addDebugLog('Connecting to: ' + wsUrl, 'info');
+                    
                     sessionData.ws = new WebSocket(wsUrl);
                     
+                    // Set a longer timeout for Render cold starts
+                    const connectionTimeout = setTimeout(() => {
+                        if (sessionData.ws.readyState === WebSocket.CONNECTING) {
+                            addDebugLog('Connection timeout - service may be sleeping', 'warning');
+                            sessionData.ws.close();
+                            reject(new Error('Connection timeout'));
+                        }
+                    }, 30000); // 30 second timeout for cold starts
+                    
                     sessionData.ws.onopen = () => {
+                        clearTimeout(connectionTimeout);
                         addDebugLog('Connected to signaling server', 'success');
                         sessionData.reconnectAttempts = 0;
+                        sessionData.connectionState = 'connected';
+                        updateConnectionStatus();
                         resolve();
                     };
                     
@@ -403,6 +417,7 @@
                     };
                     
                     sessionData.ws.onclose = () => {
+                        clearTimeout(connectionTimeout);
                         addDebugLog('Disconnected from signaling server', 'warning');
                         sessionData.connectionState = 'disconnected';
                         updateConnectionStatus();
@@ -410,7 +425,8 @@
                     };
                     
                     sessionData.ws.onerror = (error) => {
-                        addDebugLog('WebSocket error: ' + error.message, 'error');
+                        clearTimeout(connectionTimeout);
+                        addDebugLog('WebSocket error: ' + (error.message || 'Connection failed'), 'error');
                         reject(error);
                     };
                     
@@ -519,6 +535,21 @@
                             sessionData.connectionState = 'failed';
                             updateConnectionStatus();
                             showNotification('Session not found - ask for a new link', 'error');
+                        } else if (message.message.includes('already exists')) {
+                            // Generate new session ID and retry
+                            addDebugLog('Session ID conflict - generating new ID', 'warning');
+                            sessionData.sessionId = generateSessionId();
+                            setTimeout(() => {
+                                if (sessionData.ws && sessionData.ws.readyState === WebSocket.OPEN) {
+                                    sessionData.ws.send(JSON.stringify({
+                                        type: 'create_session',
+                                        sessionId: sessionData.sessionId,
+                                        topic: sessionData.topic,
+                                        userName: sessionData.userName
+                                    }));
+                                    addDebugLog('Retrying session creation with new ID', 'info');
+                                }
+                            }, 1000);
                         }
                         break;
                         
