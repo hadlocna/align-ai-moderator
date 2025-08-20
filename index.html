@@ -430,14 +430,30 @@
                 
                 setTimeout(() => {
                     if (sessionData.sessionId) {
+                        // Don't change UI during reconnect - maintain current screen
+                        const currentScreen = getCurrentScreen();
                         sessionData.isCreator ? initLocalSession() : joinLocalSession();
+                        
+                        // Restore screen after reconnect attempt
+                        setTimeout(() => {
+                            if (currentScreen && sessionData.connectionState !== 'connected') {
+                                showScreen(currentScreen);
+                            }
+                        }, 1000);
                     }
                 }, 2000 * sessionData.reconnectAttempts);
             } else {
                 addDebugLog('Max reconnect attempts reached', 'error');
                 sessionData.connectionState = 'failed';
                 updateConnectionStatus();
+                showNotification('Connection lost. Please refresh the page.', 'error');
             }
+        }
+        
+        function getCurrentScreen() {
+            // Find which screen is currently visible
+            const screens = [loginScreen, topicSetupScreen, topicAgreementScreen, userInputScreen, waitingScreen, resultsScreen];
+            return screens.find(screen => !screen.classList.contains('hidden'));
         }
         
         function handleWebSocketMessage(message) {
@@ -455,8 +471,8 @@
                             sessionData.partnerName = message.userName;
                             sessionData.topic = message.topic;
                             
-                            // If creator, transition to topic agreement screen
-                            if (sessionData.isCreator) {
+                            // If creator and still on setup screen, transition to topic agreement
+                            if (sessionData.isCreator && getCurrentScreen() === topicSetupScreen) {
                                 showScreen(topicAgreementScreen);
                             }
                             updateTopicAgreementScreen();
@@ -487,6 +503,13 @@
                         
                     case 'message_sent':
                         addDebugLog(`Message sent: ${message.messageType}`, 'info');
+                        break;
+                        
+                    case 'ping':
+                        // Respond to server keep-alive ping
+                        if (sessionData.ws && sessionData.ws.readyState === WebSocket.OPEN) {
+                            sessionData.ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+                        }
                         break;
                         
                     case 'pong':

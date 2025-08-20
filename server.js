@@ -29,6 +29,22 @@ setInterval(() => {
     }
 }, 300000); // Check every 5 minutes
 
+// Keep-alive mechanism for Render
+setInterval(() => {
+    console.log(`Keep-alive: ${sessions.size} active sessions, ${wss.clients.size} connections`);
+    
+    // Send ping to all connected clients to keep connections alive
+    wss.clients.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+            try {
+                ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+            } catch (error) {
+                console.error('Error sending keep-alive ping:', error);
+            }
+        }
+    });
+}, 45000); // Every 45 seconds
+
 wss.on('connection', (ws, req) => {
     console.log('New WebSocket connection');
     
