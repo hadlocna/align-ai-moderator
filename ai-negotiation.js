@@ -65,7 +65,7 @@ Remember: The other party has their own AI advocate. Work together to find a sol
 
         try {
             const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
+                model: 'gpt-5',
                 messages: [
                     { role: 'system', content: this.getSystemPrompt() },
                     { role: 'user', content: prompt }
@@ -137,7 +137,7 @@ Please moderate this round by:
 
         try {
             const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
+                model: 'gpt-5',
                 messages: [
                     { role: 'system', content: this.getSystemPrompt() },
                     { role: 'user', content: context }
@@ -182,7 +182,7 @@ The agreement should be specific, fair, and implementable by both parties.`;
 
         try {
             const response = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
+                model: 'gpt-5',
                 messages: [
                     { role: 'system', content: this.getSystemPrompt() },
                     { role: 'user', content: prompt }
