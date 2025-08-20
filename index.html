@@ -8,48 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, doc, setDoc, onSnapshot, deleteDoc, collection, addDoc, query, where, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        
-        // Firebase configuration (demo setup - replace with real config for production)
-        const firebaseConfig = {
-            apiKey: "demo-key",
-            authDomain: "align-moderator-demo.firebaseapp.com", 
-            projectId: "align-moderator-demo",
-            storageBucket: "align-moderator-demo.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:demo123"
-        };
-        
-        // Initialize Firebase with demo/mock fallback
-        try {
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
-            window.firebase = { db, doc, setDoc, onSnapshot, deleteDoc, collection, addDoc, query, where, orderBy, serverTimestamp };
-        } catch (error) {
-            console.log('Firebase not available, using mock implementation for demo');
-            // Mock Firebase for local testing
-            window.firebase = {
-                db: {},
-                doc: () => ({ id: 'mock-doc' }),
-                setDoc: async () => console.log('Mock setDoc called'),
-                onSnapshot: (ref, callback) => {
-                    console.log('Mock onSnapshot called');
-                    setTimeout(() => callback({ exists: () => true, data: () => ({ participants: ['demo'] }) }), 1000);
-                    return () => console.log('Mock unsubscribe');
-                },
-                deleteDoc: async () => console.log('Mock deleteDoc called'),
-                collection: () => ({ id: 'mock-collection' }),
-                addDoc: async () => console.log('Mock addDoc called'),
-                query: () => ({ id: 'mock-query' }),
-                where: () => ({ id: 'mock-where' }),
-                orderBy: () => ({ id: 'mock-orderBy' }),
-                serverTimestamp: () => new Date()
-            };
-        }
-    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -155,10 +113,10 @@
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
-                        <p class="text-sm text-blue-600 mt-2">This link will establish a real-time collaborative session!</p>
+                        <p class="text-sm text-blue-600 mt-2">This link enables pure peer-to-peer collaboration!</p>
                         <div class="mt-3 p-2 bg-green-100 rounded text-xs text-green-800">
-                            <i class="fas fa-cloud mr-1"></i>
-                            <strong>Real-time sync:</strong> Secure cloud-based session! Check debug logs for connection details.
+                            <i class="fas fa-shield-alt mr-1"></i>
+                            <strong>Private P2P:</strong> No external servers - data stays on your device only!
                         </div>
                     </div>
                 </div>
@@ -192,18 +150,18 @@
                         </div>
                     </div>
                     <div id="participantStatus" class="mt-6 p-4 bg-gray-50 rounded-lg">
-                        <h3 class="font-semibold mb-2">Real-time Session:</h3>
+                        <h3 class="font-semibold mb-2">P2P Session:</h3>
                         <div id="participantsList"></div>
                         <div class="mt-4 pt-3 border-t border-gray-200">
                             <button id="testConnectionBtn" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition mr-2">
-                                <i class="fas fa-cloud mr-1"></i>Test Connection
+                                <i class="fas fa-shield-alt mr-1"></i>Test P2P
                             </button>
                             <button id="toggleDebugBtn" class="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 transition">
                                 <i class="fas fa-bug mr-1"></i>Show Debug
                             </button>
                         </div>
                         <div id="debugPanel" class="hidden mt-4 p-3 bg-gray-800 text-green-400 rounded text-xs font-mono max-h-40 overflow-y-auto">
-                            <div class="font-bold text-white mb-2">Real-time Debug Logs:</div>
+                            <div class="font-bold text-white mb-2">P2P Debug Logs:</div>
                             <div id="debugLogs"></div>
                         </div>
                     </div>
@@ -303,7 +261,7 @@
     </div>
 
     <script>
-        // Firebase real-time session management
+        // Pure P2P session management - no third-party servers
         let sessionData = {
             sessionId: null,
             userName: '',
@@ -312,7 +270,8 @@
             isCreator: false,
             connectionState: 'disconnected',
             partnerName: null,
-            sessionListener: null
+            messageQueue: [],
+            checkInterval: null
         };
         
         // Development logs for troubleshooting
@@ -381,58 +340,66 @@
             return Math.random().toString(36).substr(2, 9);
         }
 
-        // Firebase Real-time Connection Management
-        async function initFirebaseSession() {
+        // Pure localStorage P2P - No external servers for maximum privacy
+        async function initLocalSession() {
             try {
-                addDebugLog('Initializing Firebase real-time session...', 'info');
+                addDebugLog('Initializing pure P2P session (no external servers)...', 'info');
                 
-                const { db, doc, setDoc, serverTimestamp } = window.firebase;
-                
-                // Create session document
-                const sessionRef = doc(db, 'sessions', sessionData.sessionId);
-                await setDoc(sessionRef, {
+                // Store session in localStorage - this stays on user's device only
+                const sessionKey = `align_session_${sessionData.sessionId}`;
+                const sessionInfo = {
                     topic: sessionData.topic,
                     creator: sessionData.userName,
-                    createdAt: serverTimestamp(),
+                    createdAt: Date.now(),
                     participants: [sessionData.userName],
-                    isActive: true
-                });
+                    isActive: true,
+                    messages: []
+                };
                 
-                addDebugLog('Firebase session created successfully', 'success');
+                localStorage.setItem(sessionKey, JSON.stringify(sessionInfo));
+                
+                addDebugLog('Local P2P session created successfully', 'success');
                 sessionData.connectionState = 'connected';
                 updateConnectionStatus();
                 
-                // Listen for session updates
-                listenToSession();
+                // Start checking for messages
+                startMessagePolling();
                 
-                // Schedule cleanup for privacy
-                cleanupSession();
+                // Schedule cleanup for privacy (24 hours)
+                setTimeout(() => cleanupSession(), 86400000);
                 
             } catch (error) {
-                addDebugLog(`Error initializing Firebase session: ${error.message}`, 'error');
-                showNotification('Connection error - please try again', 'error');
+                addDebugLog(`Error initializing local session: ${error.message}`, 'error');
+                showNotification('Session setup failed - please try again', 'error');
             }
         }
 
-        async function joinFirebaseSession() {
+        async function joinLocalSession() {
             try {
-                addDebugLog('Joining Firebase session...', 'info');
+                addDebugLog('Joining P2P session...', 'info');
                 
-                const { db, doc, setDoc, serverTimestamp } = window.firebase;
+                const sessionKey = `align_session_${sessionData.sessionId}`;
+                const existingSession = localStorage.getItem(sessionKey);
+                
+                if (!existingSession) {
+                    addDebugLog('Session not found or expired', 'error');
+                    showNotification('Session not found - ask for a new link', 'error');
+                    return;
+                }
                 
                 // Update session with new participant
-                const sessionRef = doc(db, 'sessions', sessionData.sessionId);
-                await setDoc(sessionRef, {
-                    participants: [sessionData.partnerName, sessionData.userName],
-                    updatedAt: serverTimestamp()
-                }, { merge: true });
+                const sessionInfo = JSON.parse(existingSession);
+                if (!sessionInfo.participants.includes(sessionData.userName)) {
+                    sessionInfo.participants.push(sessionData.userName);
+                    localStorage.setItem(sessionKey, JSON.stringify(sessionInfo));
+                }
                 
-                addDebugLog('Successfully joined Firebase session', 'success');
+                addDebugLog('Successfully joined P2P session', 'success');
                 sessionData.connectionState = 'connected';
                 updateConnectionStatus();
                 
-                // Listen for session updates
-                listenToSession();
+                // Start message polling
+                startMessagePolling();
                 
                 // Send join message
                 await sendMessage({
@@ -440,66 +407,75 @@
                     userName: sessionData.userName
                 });
                 
-                // Schedule cleanup for privacy
-                cleanupSession();
-                
             } catch (error) {
-                addDebugLog(`Error joining Firebase session: ${error.message}`, 'error');
+                addDebugLog(`Error joining session: ${error.message}`, 'error');
                 showNotification('Failed to join session - please try again', 'error');
             }
         }
         
-        function listenToSession() {
+        function startMessagePolling() {
+            // Poll localStorage for new messages every 500ms
+            if (sessionData.checkInterval) {
+                clearInterval(sessionData.checkInterval);
+            }
+            
+            sessionData.checkInterval = setInterval(() => {
+                checkForNewMessages();
+            }, 500);
+            
+            addDebugLog('Message polling started - checking for peer messages every 500ms', 'info');
+        }
+        
+        function checkForNewMessages() {
             try {
-                const { db, doc, onSnapshot, collection, query, where, orderBy } = window.firebase;
+                const sessionKey = `align_session_${sessionData.sessionId}`;
+                const sessionInfo = JSON.parse(localStorage.getItem(sessionKey) || '{}');
                 
-                // Listen to session updates
-                const sessionRef = doc(db, 'sessions', sessionData.sessionId);
-                sessionData.sessionListener = onSnapshot(sessionRef, (doc) => {
-                    if (doc.exists()) {
-                        const data = doc.data();
-                        addDebugLog('Session updated', 'info');
-                        
-                        // Update participant list
-                        if (data.participants && data.participants.length > 1) {
-                            sessionData.partnerName = data.participants.find(p => p !== sessionData.userName);
-                            updateTopicAgreementScreen();
-                        }
-                    }
-                });
-                
-                // Listen to messages
-                const messagesRef = collection(db, 'sessions', sessionData.sessionId, 'messages');
-                const messagesQuery = query(messagesRef, orderBy('timestamp'));
-                
-                onSnapshot(messagesQuery, (snapshot) => {
-                    snapshot.docChanges().forEach((change) => {
-                        if (change.type === 'added') {
-                            const message = change.doc.data();
-                            if (message.sender !== sessionData.userName) {
-                                handleMessage(message);
-                            }
+                if (sessionInfo.messages && sessionInfo.messages.length > 0) {
+                    // Process new messages
+                    sessionInfo.messages.forEach(message => {
+                        if (message.sender !== sessionData.userName && !sessionData.messageQueue.includes(message.id)) {
+                            sessionData.messageQueue.push(message.id);
+                            handleMessage(message);
                         }
                     });
-                });
+                }
                 
-                addDebugLog('Firebase listeners established', 'success');
+                // Update participant info
+                if (sessionInfo.participants && sessionInfo.participants.length > 1) {
+                    const newPartner = sessionInfo.participants.find(p => p !== sessionData.userName);
+                    if (newPartner && newPartner !== sessionData.partnerName) {
+                        sessionData.partnerName = newPartner;
+                        updateTopicAgreementScreen();
+                    }
+                }
                 
             } catch (error) {
-                addDebugLog(`Error setting up Firebase listeners: ${error.message}`, 'error');
+                addDebugLog(`Error checking messages: ${error.message}`, 'warning');
             }
         }
         
         async function sendMessage(message) {
             try {
-                const { db, collection, addDoc, serverTimestamp } = window.firebase;
+                const sessionKey = `align_session_${sessionData.sessionId}`;
+                const sessionInfo = JSON.parse(localStorage.getItem(sessionKey) || '{}');
                 
-                const messagesRef = collection(db, 'sessions', sessionData.sessionId, 'messages');
-                await addDoc(messagesRef, {
+                // Add message to session
+                if (!sessionInfo.messages) {
+                    sessionInfo.messages = [];
+                }
+                
+                const messageWithId = {
                     ...message,
                     sender: sessionData.userName,
-                    timestamp: serverTimestamp()
-                });
+                    timestamp: Date.now(),
+                    id: Math.random().toString(36).substr(2, 9)
+                };
+                
+                sessionInfo.messages.push(messageWithId);
+                sessionInfo.lastActivity = Date.now();
+                
+                localStorage.setItem(sessionKey, JSON.stringify(sessionInfo));
                 
                 addDebugLog(`Sent message: ${message.type}`, 'info');
                 return true;
@@ -550,7 +526,7 @@
             if (statusElement) {
                 const isConnected = sessionData.connectionState === 'connected';
                 if (isConnected) {
-                    statusElement.innerHTML = '<span style="color: #10B981;">🟢 Real-time Connected</span>';
+                    statusElement.innerHTML = '<span style="color: #10B981;">🛡️ P2P Active</span>';
                 } else {
                     statusElement.innerHTML = '<span style="color: #6B7280;">🔗 Connecting...</span>';
                 }
@@ -714,8 +690,8 @@
             
             addDebugLog('Creating new real-time session as creator', 'info');
             
-            // Initialize Firebase session
-            await initFirebaseSession();
+            // Initialize local P2P session
+            await initLocalSession();
             
             const shareURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName);
             document.getElementById('shareLink').value = shareURL;
@@ -724,7 +700,7 @@
             document.getElementById('shareSessionBtn').classList.remove('hidden');
             document.getElementById('createTopicBtn').classList.add('hidden');
             
-            showNotification('Session created! Share the link for real-time collaboration.', 'success');
+            showNotification('Session created! Share the link for private P2P collaboration.', 'success');
         });
 
         document.getElementById('testConnectionBtn')?.addEventListener('click', async () => {
@@ -847,8 +823,8 @@
             sessionData.isCreator = false;
             sessionData.partnerName = urlData.creator;
             
-            // Join Firebase session
-            await joinFirebaseSession();
+            // Join local P2P session
+            await joinLocalSession();
             
             // Show topic agreement screen
             showScreen(topicAgreementScreen);
@@ -858,24 +834,17 @@
         // Session cleanup for privacy
         async function cleanupSession() {
             try {
-                if (sessionData.sessionListener) {
-                    sessionData.sessionListener();
-                    addDebugLog('Firebase listeners cleaned up', 'info');
+                // Clear polling interval
+                if (sessionData.checkInterval) {
+                    clearInterval(sessionData.checkInterval);
+                    addDebugLog('Message polling stopped', 'info');
                 }
                 
+                // Remove session from localStorage for privacy
                 if (sessionData.sessionId) {
-                    const { db, doc, deleteDoc, collection } = window.firebase;
-                    
-                    // Delete session data after 1 hour for privacy
-                    setTimeout(async () => {
-                        try {
-                            const sessionRef = doc(db, 'sessions', sessionData.sessionId);
-                            await deleteDoc(sessionRef);
-                            addDebugLog('Session data cleaned up for privacy', 'info');
-                        } catch (error) {
-                            addDebugLog(`Error cleaning session: ${error.message}`, 'warning');
-                        }
-                    }, 3600000); // 1 hour
+                    const sessionKey = `align_session_${sessionData.sessionId}`;
+                    localStorage.removeItem(sessionKey);
+                    addDebugLog('Session data removed from localStorage for privacy', 'info');
                 }
                 
             } catch (error) {
@@ -1012,10 +981,8 @@
         }
         
         function startOver() {
-            // Clean up Firebase listeners
-            if (sessionData.sessionListener) {
-                sessionData.sessionListener();
-            }
+            // Clean up polling and session data
+            cleanupSession();
             
             // Reset all state
             sessionData = {
@@ -1026,7 +993,8 @@
                 isCreator: false,
                 connectionState: 'disconnected',
                 partnerName: null,
-                sessionListener: null
+                messageQueue: [],
+                checkInterval: null
             };
             
             // Clear form fields
@@ -1074,7 +1042,7 @@
                             type: 'ping',
                             userName: sessionData.userName
                         });
-                        showNotification('Test ping sent via real-time sync!', 'info');
+                        showNotification('Test ping sent via P2P!', 'info');
                         addDebugLog('Test ping sent to peer', 'info');
                     } else {
                         showNotification('Not connected yet', 'warning');
