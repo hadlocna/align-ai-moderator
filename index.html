@@ -455,6 +455,11 @@
                             addDebugLog(`${message.userName} joined the session`, 'success');
                             sessionData.partnerName = message.userName;
                             sessionData.topic = message.topic;
+                            
+                            // If creator, transition to topic agreement screen
+                            if (sessionData.isCreator) {
+                                showScreen(topicAgreementScreen);
+                            }
                             updateTopicAgreementScreen();
                         }
                         sessionData.connectionState = 'connected';
@@ -472,12 +477,13 @@
                         
                     case 'message_received':
                         addDebugLog(`Received ${message.messageType} from ${message.from}`, 'info');
-                        handleMessage({
-                            type: message.messageType,
-                            content: message.content,
+                        // Pass the content as the main message object, adding metadata
+                        const receivedMessage = {
+                            ...message.content,
                             sender: message.from,
                             timestamp: message.timestamp
-                        });
+                        };
+                        handleMessage(receivedMessage);
                         break;
                         
                     case 'message_sent':
@@ -534,23 +540,26 @@
             
             switch (message.type) {
                 case 'userJoined':
-                    sessionData.partnerName = message.userName;
+                    sessionData.partnerName = message.sender;
                     updateTopicAgreementScreen();
-                    showNotification(`${message.userName} joined the session!`, 'success');
+                    showNotification(`${message.sender} joined the session!`, 'success');
                     break;
                 case 'topicModified':
                     sessionData.topic = message.topic;
-                    document.getElementById('proposedTopic').textContent = message.topic;
-                    showNotification(`${message.userName} modified the topic`, 'info');
+                    const proposedTopicEl = document.getElementById('proposedTopic');
+                    if (proposedTopicEl) {
+                        proposedTopicEl.textContent = message.topic;
+                    }
+                    showNotification(`${message.sender} modified the topic`, 'info');
                     break;
                 case 'topicAgreed':
-                    showNotification(`${message.userName} agreed to the topic!`, 'success');
+                    showNotification(`${message.sender} agreed to the topic!`, 'success');
                     break;
                 case 'proceedToInputs':
                     proceedToPrivateInputs();
                     break;
                 case 'ping':
-                    showNotification(`Ping from ${message.userName}`, 'success');
+                    showNotification(`Ping from ${message.sender}`, 'success');
                     // Send pong back
                     sendMessage({
                         type: 'pong',
@@ -558,7 +567,7 @@
                     });
                     break;
                 case 'pong':
-                    showNotification(`Pong from ${message.userName}`, 'success');
+                    showNotification(`Pong from ${message.sender}`, 'success');
                     break;
             }
         }
