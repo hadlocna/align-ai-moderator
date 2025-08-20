@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: align-ai-negotiation
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node ai-negotiation.js
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false  # Set this manually in Render dashboard
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
