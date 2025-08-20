@@ -325,12 +325,9 @@
         // User input data
         const userInputs = { objectives: '', mustHaves: '', constraints: '' };
         
-        // Mock partner data for demo
-        const mockPartnerData = { 
-            objectives: "I need to complete my 2 presentation for Toto, and background research for Salina",
-            mustHaves: "I need at least 4 hours of uninterrupted work, however this can be broken up",
-            constraints: "I don't mind paying for a babysitter, but I can't find one and my partner isn't helping, we need to find a solution that's fair to both of us."
-        };
+        // Partner data (received via WebSocket)
+        let partnerInputs = null;
+        let bothInputsReady = false;
 
         // URL and session management
         function generateSessionId() {
@@ -579,6 +576,9 @@
                     break;
                 case 'proceedToInputs':
                     proceedToPrivateInputs();
+                    break;
+                case 'userInputsSubmitted':
+                    handlePartnerInputsReceived(message);
                     break;
                 case 'ping':
                     showNotification(`Ping from ${message.sender}`, 'success');
@@ -854,7 +854,7 @@
             document.getElementById('topicModification').value = '';
         });
 
-        submitBtn.addEventListener('click', () => {
+        submitBtn.addEventListener('click', async () => {
             userInputs.objectives = document.getElementById('objectives').value;
             userInputs.mustHaves = document.getElementById('mustHaves').value;
             userInputs.constraints = document.getElementById('constraints').value;
@@ -865,14 +865,19 @@
                 return;
             }
 
+            // Send user inputs to partner (for AI negotiation)
+            await sendMessage({
+                type: 'userInputsSubmitted',
+                userName: sessionData.userName,
+                inputs: userInputs
+            });
+
             // Transition to waiting screen
             showScreen(waitingScreen);
             updateStepIndicator(2);
-
-            // Simulate negotiation
-            setTimeout(() => {
-                runNegotiation();
-            }, 4000);
+            
+            addDebugLog('Private inputs submitted, waiting for partner...', 'info');
+            showNotification('Inputs submitted! Waiting for your partner...', 'success');
         });
 
         async function joinExistingSession() {
@@ -984,40 +989,147 @@
             showScreen(userInputScreen);
             updateStepIndicator(1);
         }
-
-        async function runNegotiation() {
-            const topic = sessionData.topic;
+        
+        function handlePartnerInputsReceived(message) {
+            partnerInputs = {
+                userName: message.sender,
+                inputs: message.inputs
+            };
             
-            // In a real app, this prompt would be sent to a secure backend
-            const prompt = `
-                Simulate a negotiation between two AIs based on user inputs for the topic: "${topic}".
-                User A wants: ${userInputs.objectives}. Non-negotiable: ${userInputs.mustHaves}. Constraints: ${userInputs.constraints}.
-                User B wants: ${mockPartnerData.objectives}. Non-negotiable: ${mockPartnerData.mustHaves}. Constraints: ${mockPartnerData.constraints}.
+            addDebugLog(`Received inputs from ${message.sender}`, 'info');
+            showNotification(`${message.sender} has submitted their inputs!`, 'info');
+            
+            // Check if both users have submitted inputs
+            if (userInputs.objectives && partnerInputs) {
+                bothInputsReady = true;
+                addDebugLog('Both users ready - starting AI negotiation', 'success');
+                setTimeout(() => {
+                    startAINegotiation();
+                }, 2000);
+            }
+        }
+
+        async function startAINegotiation() {
+            try {
+                addDebugLog('Starting AI-to-AI negotiation...', 'info');
                 
-                Generate a JSON object with two keys:
-                1. "backchannel": An array of 5 short, neutral summary points of the negotiation process.
-                2. "agreement": A final proposed agreement as a well-structured HTML string.
-            `;
-
-            const apiResponse = await mockLLMCall(prompt);
-            
-            agreementDiv.innerHTML = apiResponse.agreement;
+                // Show both users are in negotiation mode
+                showScreen(waitingScreen);
+                updateStepIndicator(2);
+                
+                // Send negotiation request to AI API
+                const negotiationRequest = {
+                    sessionId: sessionData.sessionId,
+                    topic: sessionData.topic,
+                    user1Data: {
+                        userName: sessionData.userName,
+                        inputs: userInputs
+                    },
+                    user2Data: partnerInputs
+                };
+                
+                addDebugLog('Sending request to AI negotiation API...', 'info');
+                
+                // Call AI negotiation API
+                const response = await fetch('/api/start-negotiation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(negotiationRequest)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addDebugLog(`AI negotiation completed in ${result.result.rounds} rounds`, 'success');
+                    displayNegotiationResult(result.result);
+                } else {
+                    throw new Error(result.message || 'AI negotiation failed');
+                }
+                
+            } catch (error) {
+                addDebugLog(`AI negotiation error: ${error.message}`, 'error');
+                showNotification('AI negotiation failed. Using fallback process...', 'warning');
+                
+                // Fall back to mock negotiation if AI API fails
+                setTimeout(() => {
+                    runMockNegotiation();
+                }, 2000);
+            }
+        }
+        
+        function displayNegotiationResult(result) {
+            agreementDiv.innerHTML = result.agreement;
             backchannelDiv.innerHTML = '';
-             apiResponse.backchannel.forEach(item => {
+            
+            result.backchannel.forEach((item, index) => {
                 const p = document.createElement('p');
-                p.className = 'p-2 bg-gray-100 rounded-md';
-                p.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-2"></i> ${item}`;
+                p.className = 'p-2 bg-gray-100 rounded-md mb-2';
+                p.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-2"></i> <strong>Round ${index + 1}:</strong> ${item}`;
                 backchannelDiv.appendChild(p);
             });
 
             // Transition to results screen
             showScreen(resultsScreen);
             updateStepIndicator(3);
+            
+            showNotification('AI negotiation complete!', 'success');
         }
 
+        async function runMockNegotiation() {
+            // Fallback negotiation using mock data
+            addDebugLog('Using mock negotiation as fallback', 'warning');
+            
+            const topic = sessionData.topic;
+            const partnerData = partnerInputs ? partnerInputs.inputs : {
+                objectives: "I need to complete my important work projects",
+                mustHaves: "I need at least 4 hours of uninterrupted work time",
+                constraints: "I have limited childcare options and need a fair solution"
+            };
+            
+            const mockResult = {
+                agreement: generateMockAgreement(topic, userInputs, partnerData),
+                backchannel: [
+                    "Identified both parties' core needs and constraints",
+                    "Found areas of potential compromise and mutual benefit",
+                    "Developed a time-sharing solution that respects both schedules",
+                    "Ensured fairness and equal distribution of responsibilities",
+                    "Confirmed all non-negotiable requirements are met"
+                ]
+            };
+            
+            setTimeout(() => {
+                displayNegotiationResult(mockResult);
+            }, 3000);
+        }
+        
+        function generateMockAgreement(topic, user1Inputs, user2Inputs) {
+            return `
+                <h4 class="text-xl font-bold">Agreement: ${topic}</h4>
+                <hr class="my-4">
+                <h5><strong>Principles:</strong></h5>
+                <p>This agreement ensures both parties achieve their key objectives while respecting each other's constraints and non-negotiable requirements.</p>
+                <br>
+                <h5><strong>Key Terms:</strong></h5>
+                <ul class="list-disc pl-6">
+                    <li><strong>Objective 1:</strong> Address ${sessionData.userName}'s primary goal while considering their constraints</li>
+                    <li><strong>Objective 2:</strong> Address ${partnerInputs?.userName || 'Partner'}'s primary goal while respecting their requirements</li>
+                    <li><strong>Fair Distribution:</strong> Responsibilities and benefits are shared equitably</li>
+                    <li><strong>Flexibility:</strong> Built-in review process for adjustments if needed</li>
+                </ul>
+                <br>
+                <h5><strong>Implementation:</strong></h5>
+                <p>This agreement takes effect immediately and includes a review period to ensure it works for both parties.</p>
+            `;
+        }
+        
         async function mockLLMCall(prompt) {
-            console.log("Mock LLM Prompt:", prompt);
-            // This mock response is tailored to the childcare scenario
+            console.log("Mock LLM Call - this shouldn't be used anymore");
             return {
                 "backchannel": [
                     "Identified User A's critical afternoon time block as a primary constraint.",
