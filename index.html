@@ -611,6 +611,10 @@
                 case 'userInputsSubmitted':
                     handlePartnerInputsReceived(message);
                     break;
+                case 'negotiationComplete':
+                    addDebugLog(`Received negotiation results from ${message.sender}`, 'success');
+                    displayNegotiationResult(message.content);
+                    break;
                 case 'ping':
                     showNotification(`Ping from ${message.sender}`, 'success');
                     // Send pong back
@@ -1062,7 +1066,11 @@
                 addDebugLog('Sending request to AI negotiation API...', 'info');
                 
                 // Call AI negotiation API
-                const response = await fetch('/api/start-negotiation', {
+                const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                    ? 'http://localhost:3001/api/start-negotiation'
+                    : 'https://align-ai-negotiation.onrender.com/api/start-negotiation';
+                
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1078,6 +1086,11 @@
                 
                 if (result.success) {
                     addDebugLog(`AI negotiation completed in ${result.result.rounds} rounds`, 'success');
+                    
+                    // Share results with both users via WebSocket
+                    sendMessage('negotiationComplete', result.result);
+                    
+                    // Display results locally
                     displayNegotiationResult(result.result);
                 } else {
                     throw new Error(result.message || 'AI negotiation failed');
@@ -1135,6 +1148,10 @@
             };
             
             setTimeout(() => {
+                // Share mock results with both users via WebSocket
+                sendMessage('negotiationComplete', mockResult);
+                
+                // Display results locally
                 displayNegotiationResult(mockResult);
             }, 3000);
         }
@@ -1211,12 +1228,22 @@
                 maxReconnectAttempts: 5
             };
             
+            // Reset global state variables
+            partnerInputs = null;
+            bothInputsReady = false;
+            
             // Clear form fields
             document.getElementById('userName').value = '';
             document.getElementById('topicInput').value = '';
             document.getElementById('objectives').value = '';
             document.getElementById('mustHaves').value = '';
             document.getElementById('constraints').value = '';
+            
+            // Reset login message to default
+            const loginMessage = document.getElementById('loginMessage');
+            if (loginMessage) {
+                loginMessage.innerHTML = 'Enter your name to begin a negotiation session';
+            }
             
             // Reset URL
             window.history.pushState({}, '', window.location.pathname);
