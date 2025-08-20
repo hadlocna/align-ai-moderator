@@ -394,9 +394,9 @@
             return new Promise((resolve, reject) => {
                 try {
                     // Use WSS for production, WS for local development
-                    const wsUrl = window.location.protocol === 'https:' 
-                        ? 'wss://align-signaling-server.herokuapp.com' 
-                        : 'ws://localhost:8080';
+                    const wsUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                        ? 'ws://localhost:8080'
+                        : 'wss://align-ai-moderator.onrender.com';
                     
                     sessionData.ws = new WebSocket(wsUrl);
                     
