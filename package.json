@@ -5,7 +5,11 @@
   "main": "index.html",
   "scripts": {
     "dev": "python3 -m http.server 8000",
-    "start": "python3 -m http.server 8000"
+    "start": "python3 -m http.server 8000",
+    "server": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
   },
   "keywords": [
     "ai",

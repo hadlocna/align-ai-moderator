@@ -261,7 +261,7 @@
     </div>
 
     <script>
-        // Pure P2P session management - no third-party servers
+        // WebSocket P2P session management with minimal signaling server
         let sessionData = {
             sessionId: null,
             userName: '',
@@ -271,7 +271,9 @@
             connectionState: 'disconnected',
             partnerName: null,
             messageQueue: [],
-            checkInterval: null
+            ws: null,
+            reconnectAttempts: 0,
+            maxReconnectAttempts: 5
         };
         
         // Development logs for troubleshooting
@@ -340,144 +342,188 @@
             return Math.random().toString(36).substr(2, 9);
         }
 
-        // Pure localStorage P2P - No external servers for maximum privacy
+        // WebSocket session creation with privacy-first signaling server
         async function initLocalSession() {
             try {
-                addDebugLog('Initializing pure P2P session (no external servers)...', 'info');
+                addDebugLog('Connecting to privacy-first signaling server...', 'info');
                 
-                // Store session in localStorage - this stays on user's device only
-                const sessionKey = `align_session_${sessionData.sessionId}`;
-                const sessionInfo = {
-                    topic: sessionData.topic,
-                    creator: sessionData.userName,
-                    createdAt: Date.now(),
-                    participants: [sessionData.userName],
-                    isActive: true,
-                    messages: []
-                };
+                await connectWebSocket();
                 
-                localStorage.setItem(sessionKey, JSON.stringify(sessionInfo));
-                
-                addDebugLog('Local P2P session created successfully', 'success');
-                sessionData.connectionState = 'connected';
-                updateConnectionStatus();
-                
-                // Start checking for messages
-                startMessagePolling();
-                
-                // Schedule cleanup for privacy (24 hours)
-                setTimeout(() => cleanupSession(), 86400000);
+                if (sessionData.ws && sessionData.ws.readyState === WebSocket.OPEN) {
+                    sessionData.ws.send(JSON.stringify({
+                        type: 'create_session',
+                        sessionId: sessionData.sessionId,
+                        topic: sessionData.topic,
+                        userName: sessionData.userName
+                    }));
+                    addDebugLog('Session creation request sent', 'info');
+                }
                 
             } catch (error) {
-                addDebugLog(`Error initializing local session: ${error.message}`, 'error');
+                addDebugLog(`Error initializing session: ${error.message}`, 'error');
+                sessionData.connectionState = 'failed';
+                updateConnectionStatus();
                 showNotification('Session setup failed - please try again', 'error');
             }
         }
 
         async function joinLocalSession() {
             try {
-                addDebugLog('Joining P2P session...', 'info');
+                addDebugLog('Joining session via signaling server...', 'info');
                 
-                const sessionKey = `align_session_${sessionData.sessionId}`;
-                const existingSession = localStorage.getItem(sessionKey);
+                await connectWebSocket();
                 
-                if (!existingSession) {
-                    addDebugLog('Session not found or expired', 'error');
-                    showNotification('Session not found - ask for a new link', 'error');
-                    return;
+                if (sessionData.ws && sessionData.ws.readyState === WebSocket.OPEN) {
+                    sessionData.ws.send(JSON.stringify({
+                        type: 'join_session',
+                        sessionId: sessionData.sessionId,
+                        userName: sessionData.userName
+                    }));
+                    addDebugLog('Session join request sent', 'info');
                 }
-                
-                // Update session with new participant
-                const sessionInfo = JSON.parse(existingSession);
-                if (!sessionInfo.participants.includes(sessionData.userName)) {
-                    sessionInfo.participants.push(sessionData.userName);
-                    localStorage.setItem(sessionKey, JSON.stringify(sessionInfo));
-                }
-                
-                addDebugLog('Successfully joined P2P session', 'success');
-                sessionData.connectionState = 'connected';
-                updateConnectionStatus();
-                
-                // Start message polling
-                startMessagePolling();
-                
-                // Send join message
-                await sendMessage({
-                    type: 'userJoined',
-                    userName: sessionData.userName
-                });
                 
             } catch (error) {
                 addDebugLog(`Error joining session: ${error.message}`, 'error');
+                sessionData.connectionState = 'failed';
+                updateConnectionStatus();
                 showNotification('Failed to join session - please try again', 'error');
             }
         }
         
-        function startMessagePolling() {
-            // Poll localStorage for new messages every 500ms
-            if (sessionData.checkInterval) {
-                clearInterval(sessionData.checkInterval);
-            }
-            
-            sessionData.checkInterval = setInterval(() => {
-                checkForNewMessages();
-            }, 500);
-            
-            addDebugLog('Message polling started - checking for peer messages every 500ms', 'info');
+        async function connectWebSocket() {
+            return new Promise((resolve, reject) => {
+                try {
+                    // Use WSS for production, WS for local development
+                    const wsUrl = window.location.protocol === 'https:' 
+                        ? 'wss://align-signaling-server.herokuapp.com' 
+                        : 'ws://localhost:8080';
+                    
+                    sessionData.ws = new WebSocket(wsUrl);
+                    
+                    sessionData.ws.onopen = () => {
+                        addDebugLog('Connected to signaling server', 'success');
+                        sessionData.reconnectAttempts = 0;
+                        resolve();
+                    };
+                    
+                    sessionData.ws.onmessage = (event) => {
+                        handleWebSocketMessage(JSON.parse(event.data));
+                    };
+                    
+                    sessionData.ws.onclose = () => {
+                        addDebugLog('Disconnected from signaling server', 'warning');
+                        sessionData.connectionState = 'disconnected';
+                        updateConnectionStatus();
+                        attemptReconnect();
+                    };
+                    
+                    sessionData.ws.onerror = (error) => {
+                        addDebugLog('WebSocket error: ' + error.message, 'error');
+                        reject(error);
+                    };
+                    
+                } catch (error) {
+                    reject(error);
+                }
+            });
         }
         
-        function checkForNewMessages() {
-            try {
-                const sessionKey = `align_session_${sessionData.sessionId}`;
-                const sessionInfo = JSON.parse(localStorage.getItem(sessionKey) || '{}');
+        function attemptReconnect() {
+            if (sessionData.reconnectAttempts < sessionData.maxReconnectAttempts) {
+                sessionData.reconnectAttempts++;
+                addDebugLog(`Attempting reconnect ${sessionData.reconnectAttempts}/${sessionData.maxReconnectAttempts}`, 'warning');
                 
-                if (sessionInfo.messages && sessionInfo.messages.length > 0) {
-                    // Process new messages
-                    sessionInfo.messages.forEach(message => {
-                        if (message.sender !== sessionData.userName && !sessionData.messageQueue.includes(message.id)) {
-                            sessionData.messageQueue.push(message.id);
-                            handleMessage(message);
-                        }
-                    });
-                }
-                
-                // Update participant info
-                if (sessionInfo.participants && sessionInfo.participants.length > 1) {
-                    const newPartner = sessionInfo.participants.find(p => p !== sessionData.userName);
-                    if (newPartner && newPartner !== sessionData.partnerName) {
-                        sessionData.partnerName = newPartner;
-                        updateTopicAgreementScreen();
+                setTimeout(() => {
+                    if (sessionData.sessionId) {
+                        sessionData.isCreator ? initLocalSession() : joinLocalSession();
                     }
+                }, 2000 * sessionData.reconnectAttempts);
+            } else {
+                addDebugLog('Max reconnect attempts reached', 'error');
+                sessionData.connectionState = 'failed';
+                updateConnectionStatus();
+            }
+        }
+        
+        function handleWebSocketMessage(message) {
+            try {
+                switch (message.type) {
+                    case 'session_created':
+                        addDebugLog('Session created successfully', 'success');
+                        sessionData.connectionState = 'connected';
+                        updateConnectionStatus();
+                        break;
+                        
+                    case 'participant_joined':
+                        if (message.userName !== sessionData.userName) {
+                            addDebugLog(`${message.userName} joined the session`, 'success');
+                            sessionData.partnerName = message.userName;
+                            sessionData.topic = message.topic;
+                            updateTopicAgreementScreen();
+                        }
+                        sessionData.connectionState = 'connected';
+                        updateConnectionStatus();
+                        break;
+                        
+                    case 'participant_left':
+                        if (message.userName === sessionData.partnerName) {
+                            addDebugLog(`${message.userName} left the session`, 'warning');
+                            sessionData.partnerName = null;
+                            sessionData.connectionState = 'disconnected';
+                            updateConnectionStatus();
+                        }
+                        break;
+                        
+                    case 'message_received':
+                        addDebugLog(`Received ${message.messageType} from ${message.from}`, 'info');
+                        handleMessage({
+                            type: message.messageType,
+                            content: message.content,
+                            sender: message.from,
+                            timestamp: message.timestamp
+                        });
+                        break;
+                        
+                    case 'message_sent':
+                        addDebugLog(`Message sent: ${message.messageType}`, 'info');
+                        break;
+                        
+                    case 'pong':
+                        // Keep-alive response
+                        break;
+                        
+                    case 'error':
+                        addDebugLog(`Server error: ${message.message}`, 'error');
+                        if (message.message.includes('not found')) {
+                            sessionData.connectionState = 'failed';
+                            updateConnectionStatus();
+                            showNotification('Session not found - ask for a new link', 'error');
+                        }
+                        break;
+                        
+                    default:
+                        addDebugLog(`Unknown message type: ${message.type}`, 'warning');
                 }
-                
             } catch (error) {
-                addDebugLog(`Error checking messages: ${error.message}`, 'warning');
+                addDebugLog(`Error handling message: ${error.message}`, 'error');
             }
         }
         
         async function sendMessage(message) {
             try {
-                const sessionKey = `align_session_${sessionData.sessionId}`;
-                const sessionInfo = JSON.parse(localStorage.getItem(sessionKey) || '{}');
-                
-                // Add message to session
-                if (!sessionInfo.messages) {
-                    sessionInfo.messages = [];
+                if (!sessionData.ws || sessionData.ws.readyState !== WebSocket.OPEN) {
+                    addDebugLog('Cannot send message - not connected to signaling server', 'error');
+                    showNotification('Not connected - trying to reconnect...', 'warning');
+                    attemptReconnect();
+                    return false;
                 }
                 
-                const messageWithId = {
-                    ...message,
-                    sender: sessionData.userName,
-                    timestamp: Date.now(),
-                    id: Math.random().toString(36).substr(2, 9)
-                };
+                sessionData.ws.send(JSON.stringify({
+                    type: 'relay_message',
+                    messageType: message.type,
+                    content: message.content || message
+                }));
                 
-                sessionInfo.messages.push(messageWithId);
-                sessionInfo.lastActivity = Date.now();
-                
-                localStorage.setItem(sessionKey, JSON.stringify(sessionInfo));
-                
-                addDebugLog(`Sent message: ${message.type}`, 'info');
                 return true;
                 
             } catch (error) {
@@ -835,16 +881,12 @@
         async function cleanupSession() {
             try {
                 // Clear polling interval
-                if (sessionData.checkInterval) {
-                    clearInterval(sessionData.checkInterval);
-                    addDebugLog('Message polling stopped', 'info');
-                }
                 
-                // Remove session from localStorage for privacy
-                if (sessionData.sessionId) {
-                    const sessionKey = `align_session_${sessionData.sessionId}`;
-                    localStorage.removeItem(sessionKey);
-                    addDebugLog('Session data removed from localStorage for privacy', 'info');
+                // Close WebSocket connection
+                if (sessionData.ws) {
+                    sessionData.ws.close();
+                    sessionData.ws = null;
+                    addDebugLog('WebSocket connection closed', 'info');
                 }
                 
             } catch (error) {
@@ -994,7 +1036,9 @@
                 connectionState: 'disconnected',
                 partnerName: null,
                 messageQueue: [],
-                checkInterval: null
+                ws: null,
+                reconnectAttempts: 0,
+                maxReconnectAttempts: 5
             };
             
             // Clear form fields

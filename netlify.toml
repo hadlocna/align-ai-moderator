@@ -1,0 +1,23 @@
+[build]
+  publish = "."
+  command = "echo 'Static site - no build step required'"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  conditions = {Role = ["client"], Country = ["US", "CA", "GB", "AU"]}
+
+# For development - proxy WebSocket server
+[[redirects]]
+  from = "/ws/*"
+  to = "ws://localhost:8080/:splat"
+  status = 200
