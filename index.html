@@ -594,12 +594,14 @@
                         
                     case 'message_received':
                         addDebugLog(`Received ${message.messageType} from ${message.from}`, 'info');
+                        console.log('Full message received:', message);
                         // Pass the content as the main message object, adding metadata
                         const receivedMessage = {
                             ...message.content,
                             sender: message.from,
                             timestamp: message.timestamp
                         };
+                        console.log('Processed message for handling:', receivedMessage);
                         handleMessage(receivedMessage);
                         break;
                         
@@ -680,6 +682,7 @@
         
         function handleMessage(message) {
             console.log('Received message:', message);
+            addDebugLog(`Processing message type: ${message.type}`, 'info');
             
             switch (message.type) {
                 case 'userJoined':
@@ -688,12 +691,19 @@
                     showNotification(`${message.sender} joined the session!`, 'success');
                     break;
                 case 'topicModified':
+                    addDebugLog(`Topic modified by ${message.sender}: ${message.topic}`, 'info');
                     sessionData.topic = message.topic;
                     const proposedTopicEl = document.getElementById('proposedTopic');
                     if (proposedTopicEl) {
                         proposedTopicEl.textContent = message.topic;
                     }
+                    // Also update the topic input if we're on that screen
+                    const topicInputEl = document.getElementById('topicInput');
+                    if (topicInputEl) {
+                        topicInputEl.value = message.topic;
+                    }
                     showNotification(`${message.sender} modified the topic`, 'info');
+                    saveSessionState(); // Save the updated topic
                     break;
                 case 'topicAgreed':
                     showNotification(`${message.sender} agreed to the topic!`, 'success');
@@ -967,7 +977,8 @@
             sessionData.topic = modification;
             document.getElementById('proposedTopic').textContent = modification;
             
-            // Send to peer via Firebase
+            // Send to peer via WebSocket
+            addDebugLog(`Sending topic modification: ${modification}`, 'info');
             const sent = await sendMessage({
                 type: 'topicModified',
                 topic: modification,
@@ -975,8 +986,10 @@
             });
             
             if (sent) {
+                addDebugLog('Topic modification sent successfully', 'success');
                 showNotification('Topic modification sent!');
             } else {
+                addDebugLog('Failed to send topic modification', 'error');
                 showNotification('No connection - modification saved locally');
             }
             
