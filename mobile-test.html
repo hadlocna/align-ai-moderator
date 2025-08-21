@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Align - Mobile Session Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .hidden { display: none; }
+        .debug {
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mobile Session Test</h1>
+    
+    <!-- Login Screen -->
+    <div id="loginScreen" class="card">
+        <h2>Session Management Test</h2>
+        <div id="sessionInfo" class="status info"></div>
+        <input type="text" id="userName" placeholder="Your name">
+        <button onclick="handleLogin()">Continue</button>
+    </div>
+    
+    <!-- Topic Setup Screen -->
+    <div id="topicScreen" class="card hidden">
+        <h2>Create New Session</h2>
+        <input type="text" id="topicInput" placeholder="What should we decide?">
+        <button onclick="createSession()">Create Session</button>
+        
+        <div id="shareSection" class="hidden">
+            <div class="status success">
+                Session created! Share this link:
+                <input type="text" id="shareLink" readonly onclick="this.select()">
+            </div>
+            <button onclick="proceedToTopic()">Continue</button>
+        </div>
+    </div>
+    
+    <!-- Topic Agreement Screen -->
+    <div id="topicScreen2" class="card hidden">
+        <h2>Topic Agreement</h2>
+        <div class="status info">
+            <strong>Topic:</strong> <span id="topicDisplay"></span>
+        </div>
+        <div id="connectionStatus"></div>
+        <button onclick="agreeTopic()">Agree</button>
+        <button onclick="modifyTopic()">Modify Topic</button>
+    </div>
+    
+    <!-- Debug Section -->
+    <div class="card">
+        <h3>Debug Information</h3>
+        <button onclick="clearDebug()">Clear Debug</button>
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="resetSession()">Reset Session</button>
+        <div id="debugLog" class="debug"></div>
+    </div>
+
+    <script>
+        // Simple session management focused on URL-based sessions
+        let sessionData = {
+            sessionId: null,
+            userName: '',
+            topic: '',
+            isCreator: false,
+            ws: null,
+            connectionState: 'disconnected'
+        };
+        
+        const WS_URL = 'wss://align-ai-moderator.onrender.com';
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const debugLog = document.getElementById('debugLog');
+            debugLog.textContent += `[${timestamp}] ${message}\n`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(`[${type}] ${message}`);
+        }
+        
+        function clearDebug() {
+            document.getElementById('debugLog').textContent = '';
+        }
+        
+        function showStatus(message, type = 'info') {
+            log(`STATUS: ${message}`, type);
+        }
+        
+        function showScreen(screenId) {
+            document.querySelectorAll('.card').forEach(card => {
+                if (card.id === screenId) {
+                    card.classList.remove('hidden');
+                } else if (card.id !== 'debugSection') {
+                    card.classList.add('hidden');
+                }
+            });
+        }
+        
+        function generateSessionId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+        }
+        
+        function getURLSession() {
+            const params = new URLSearchParams(window.location.search);
+            const sessionId = params.get('session');
+            const topic = params.get('topic');
+            const creator = params.get('creator');
+            const isInitiator = params.get('initiator') === 'true';
+            
+            if (sessionId && topic) {
+                return {
+                    sessionId,
+                    topic: decodeURIComponent(topic),
+                    creator: creator ? decodeURIComponent(creator) : '',
+                    isInitiator
+                };
+            }
+            return null;
+        }
+        
+        async function connectWebSocket() {
+            return new Promise((resolve, reject) => {
+                log('Connecting to WebSocket server...');
+                
+                sessionData.ws = new WebSocket(WS_URL);
+                
+                sessionData.ws.onopen = () => {
+                    log('WebSocket connected successfully');
+                    sessionData.connectionState = 'connected';
+                    resolve();
+                };
+                
+                sessionData.ws.onerror = (error) => {
+                    log(`WebSocket error: ${error}`, 'error');
+                    sessionData.connectionState = 'failed';
+                    reject(error);
+                };
+                
+                sessionData.ws.onclose = () => {
+                    log('WebSocket connection closed');
+                    sessionData.connectionState = 'disconnected';
+                };
+                
+                sessionData.ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        log(`Received: ${JSON.stringify(message)}`);
+                        handleWebSocketMessage(message);
+                    } catch (error) {
+                        log(`Error parsing message: ${error}`, 'error');
+                    }
+                };
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (sessionData.connectionState !== 'connected') {
+                        reject(new Error('Connection timeout'));
+                    }
+                }, 10000);
+            });
+        }
+        
+        function handleWebSocketMessage(message) {
+            switch (message.type) {
+                case 'session_created':
+                    log('Session created on server');
+                    showStatus('Session created successfully!', 'success');
+                    break;
+                case 'participant_joined':
+                    log(`${message.userName} joined the session`);
+                    showStatus(`${message.userName} joined!`, 'success');
+                    updateConnectionStatus();
+                    break;
+                case 'error':
+                    log(`Server error: ${message.message}`, 'error');
+                    showStatus(`Error: ${message.message}`, 'error');
+                    break;
+                default:
+                    log(`Unknown message type: ${message.type}`);
+            }
+        }
+        
+        function updateConnectionStatus() {
+            const statusDiv = document.getElementById('connectionStatus');
+            if (statusDiv) {
+                statusDiv.innerHTML = `<div class="status info">Connection: ${sessionData.connectionState}</div>`;
+            }
+        }
+        
+        async function handleLogin() {
+            const name = document.getElementById('userName').value.trim();
+            if (!name) {
+                showStatus('Please enter your name', 'error');
+                return;
+            }
+            
+            sessionData.userName = name;
+            log(`User logged in: ${name}`);
+            
+            const urlSession = getURLSession();
+            if (urlSession) {
+                // Joining existing session
+                log(`Joining existing session: ${urlSession.sessionId}`);
+                sessionData.sessionId = urlSession.sessionId;
+                sessionData.topic = urlSession.topic;
+                sessionData.isCreator = urlSession.isInitiator;
+                
+                await joinSession();
+            } else {
+                // Creating new session
+                log('No URL session - showing topic creation');
+                showScreen('topicScreen');
+            }
+        }
+        
+        async function createSession() {
+            const topic = document.getElementById('topicInput').value.trim();
+            if (!topic) {
+                showStatus('Please enter a topic', 'error');
+                return;
+            }
+            
+            sessionData.sessionId = generateSessionId();
+            sessionData.topic = topic;
+            sessionData.isCreator = true;
+            
+            log(`Creating session: ${sessionData.sessionId} with topic: "${topic}"`);
+            
+            try {
+                await connectWebSocket();
+                
+                // Send session creation request
+                sessionData.ws.send(JSON.stringify({
+                    type: 'create_session',
+                    sessionId: sessionData.sessionId,
+                    topic: sessionData.topic,
+                    userName: sessionData.userName
+                }));
+                
+                // Create share URL
+                const shareUrl = `${window.location.origin}${window.location.pathname}?session=${sessionData.sessionId}&topic=${encodeURIComponent(topic)}&creator=${encodeURIComponent(sessionData.userName)}`;
+                document.getElementById('shareLink').value = shareUrl;
+                
+                // Update current URL to include initiator flag
+                const creatorUrl = shareUrl + '&initiator=true';
+                window.history.pushState({}, '', creatorUrl);
+                
+                document.getElementById('shareSection').classList.remove('hidden');
+                
+                log('Share URL created');
+                showStatus('Session created! Share the link with the other person.', 'success');
+                
+            } catch (error) {
+                log(`Failed to create session: ${error}`, 'error');
+                showStatus('Failed to connect to server', 'error');
+            }
+        }
+        
+        async function joinSession() {
+            log('Attempting to join session...');
+            
+            try {
+                await connectWebSocket();
+                
+                // Send join request with topic for recreation
+                sessionData.ws.send(JSON.stringify({
+                    type: 'join_session',
+                    sessionId: sessionData.sessionId,
+                    userName: sessionData.userName,
+                    topic: sessionData.topic
+                }));
+                
+                log('Join request sent');
+                proceedToTopic();
+                
+            } catch (error) {
+                log(`Failed to join session: ${error}`, 'error');
+                showStatus('Failed to connect to server', 'error');
+            }
+        }
+        
+        function proceedToTopic() {
+            document.getElementById('topicDisplay').textContent = sessionData.topic;
+            showScreen('topicScreen2');
+            updateConnectionStatus();
+        }
+        
+        function agreeTopic() {
+            log('User agreed to topic');
+            showStatus('You agreed to the topic!', 'success');
+        }
+        
+        function modifyTopic() {
+            const newTopic = prompt('Enter modified topic:', sessionData.topic);
+            if (newTopic && newTopic.trim()) {
+                sessionData.topic = newTopic.trim();
+                document.getElementById('topicDisplay').textContent = sessionData.topic;
+                log(`Topic modified to: "${sessionData.topic}"`);
+                showStatus('Topic modified!', 'info');
+            }
+        }
+        
+        function testConnection() {
+            if (sessionData.ws && sessionData.ws.readyState === WebSocket.OPEN) {
+                sessionData.ws.send(JSON.stringify({ type: 'ping' }));
+                log('Ping sent to server');
+            } else {
+                log('No WebSocket connection to test', 'error');
+            }
+        }
+        
+        function resetSession() {
+            if (sessionData.ws) {
+                sessionData.ws.close();
+            }
+            sessionData = {
+                sessionId: null,
+                userName: '',
+                topic: '',
+                isCreator: false,
+                ws: null,
+                connectionState: 'disconnected'
+            };
+            window.history.pushState({}, '', window.location.pathname);
+            location.reload();
+        }
+        
+        // Initialize app
+        window.onload = () => {
+            log('App initializing...');
+            
+            const urlSession = getURLSession();
+            const sessionInfo = document.getElementById('sessionInfo');
+            
+            if (urlSession) {
+                sessionInfo.innerHTML = `
+                    <strong>Session detected:</strong> ${urlSession.sessionId}<br>
+                    <strong>Topic:</strong> ${urlSession.topic}<br>
+                    <strong>Role:</strong> ${urlSession.isInitiator ? 'Creator' : 'Joiner'}
+                `;
+                sessionData.sessionId = urlSession.sessionId;
+                sessionData.topic = urlSession.topic;
+                sessionData.isCreator = urlSession.isInitiator;
+            } else {
+                sessionInfo.textContent = 'No session in URL - will create new session';
+            }
+            
+            showScreen('loginScreen');
+            log('App initialized');
+        };
+    </script>
+</body>
+</html>
