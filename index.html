@@ -4,138 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Align - Secure Negotiation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f7f8fc;
-            color: #374151;
-            line-height: 1.5;
         }
-        .container {
-            max-width: 1024px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        .max-w-md { max-width: 28rem; }
-        .mx-auto { margin-left: auto; margin-right: auto; }
-        .text-center { text-align: center; }
-        .mb-4 { margin-bottom: 1rem; }
-        .mb-6 { margin-bottom: 1.5rem; }
-        .mb-8 { margin-bottom: 2rem; }
-        .mt-4 { margin-top: 1rem; }
-        .mt-6 { margin-top: 1.5rem; }
-        .mt-8 { margin-top: 2rem; }
-        .p-4 { padding: 1rem; }
-        .p-6 { padding: 1.5rem; }
-        .p-8 { padding: 2rem; }
-        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
-        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-        .bg-white { background-color: white; }
-        .rounded-lg { border-radius: 0.5rem; }
-        .rounded-2xl { border-radius: 1rem; }
-        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        .border { border: 1px solid #d1d5db; }
-        .w-full { width: 100%; }
-        .h-12 { height: 3rem; }
-        .flex { display: flex; }
-        .items-center { align-items: center; }
-        .justify-center { justify-content: center; }
-        .space-x-4 > * + * { margin-left: 1rem; }
-        .space-y-4 > * + * { margin-top: 1rem; }
-        .text-3xl { font-size: 1.875rem; }
-        .text-2xl { font-size: 1.5rem; }
-        .text-xl { font-size: 1.25rem; }
-        .text-lg { font-size: 1.125rem; }
-        .font-bold { font-weight: 700; }
-        .font-semibold { font-weight: 600; }
-        .text-indigo-600 { color: #4f46e5; }
-        .text-gray-600 { color: #6b7280; }
-        .text-gray-800 { color: #1f2937; }
-        .bg-indigo-600 { background-color: #4f46e5; }
-        .hover\:bg-indigo-700:hover { background-color: #4338ca; }
-        .bg-green-600 { background-color: #16a34a; }
-        .hover\:bg-green-700:hover { background-color: #15803d; }
-        .bg-yellow-600 { background-color: #d97706; }
-        .hover\:bg-yellow-700:hover { background-color: #b45309; }
-        .bg-gray-600 { background-color: #4b5563; }
-        .hover\:bg-gray-700:hover { background-color: #374151; }
-        .text-white { color: white; }
-        .transition { transition: all 0.15s ease-in-out; }
-        .cursor-pointer { cursor: pointer; }
-        .hidden { display: none !important; }
-        
-        /* Input styles */
-        input, textarea {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-        }
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-        
-        /* Button styles */
-        button {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s ease-in-out;
-        }
-        
         .step-active {
-            border: 2px solid #4f46e5;
+            border-color: #4f46e5;
             color: #4f46e5;
         }
         .step-done {
-            border: 2px solid #16a34a;
+            border-color: #16a34a;
             color: #16a34a;
             background-color: #f0fdf4;
         }
-        .step-indicator {
-            display: flex;
-            align-items: center;
-            flex-direction: column;
-            text-align: center;
+        .privacy-card {
+            background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
         }
-        .step-indicator > div:first-child {
-            border: 2px solid #d1d5db;
-            border-radius: 50%;
-            width: 2rem;
-            height: 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-        
-        .loader {
-            border: 8px solid #f3f4f6;
-            border-top: 8px solid #4f46e5;
-            border-radius: 50%;
-            width: 6rem;
-            height: 6rem;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
         .fade-in {
             animation: fadeIn 0.5s ease-in-out forwards;
         }
@@ -143,16 +32,12 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
-        /* Responsive */
-        @media (min-width: 768px) {
-            .step-indicator {
-                flex-direction: row;
-            }
-            .step-indicator > div:first-child {
-                margin-bottom: 0;
-                margin-right: 0.5rem;
-            }
+        .loader {
+            border-top-color: #4f46e5;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -377,16 +262,13 @@
             userName: '',
             topic: '',
             topicAgreed: false,
-            partnerTopicAgreed: false,
             isCreator: false,
             connectionState: 'disconnected',
             partnerName: null,
             messageQueue: [],
             ws: null,
             reconnectAttempts: 0,
-            maxReconnectAttempts: 5,
-            offlineMode: false,
-            connectionFailed: false
+            maxReconnectAttempts: 5
         };
         
         // Development logs for troubleshooting
@@ -452,11 +334,92 @@
             return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
         }
 
+        // Mobile persistence - save state to localStorage
+        function saveSessionState() {
+            const state = {
+                sessionData: sessionData,
+                userInputs: userInputs,
+                partnerInputs: partnerInputs,
+                bothInputsReady: bothInputsReady,
+                currentScreen: getCurrentScreenId(),
+                timestamp: Date.now()
+            };
+            localStorage.setItem('alignSessionState', JSON.stringify(state));
+            addDebugLog('Session state saved to localStorage', 'info');
+        }
+
+        function loadSessionState() {
+            try {
+                const savedState = localStorage.getItem('alignSessionState');
+                if (!savedState) return false;
+
+                const state = JSON.parse(savedState);
+                const now = Date.now();
+                
+                // Expire saved state after 2 hours
+                if (now - state.timestamp > 7200000) {
+                    localStorage.removeItem('alignSessionState');
+                    addDebugLog('Saved session state expired', 'warning');
+                    return false;
+                }
+
+                // Restore session data
+                Object.assign(sessionData, state.sessionData);
+                Object.assign(userInputs, state.userInputs || {});
+                partnerInputs = state.partnerInputs;
+                bothInputsReady = state.bothInputsReady || false;
+
+                addDebugLog('Session state restored from localStorage', 'success');
+                return state.currentScreen;
+            } catch (error) {
+                addDebugLog(`Error restoring session state: ${error.message}`, 'error');
+                localStorage.removeItem('alignSessionState');
+                return false;
+            }
+        }
+
+        function getCurrentScreenId() {
+            const screens = [
+                { element: loginScreen, id: 'loginScreen' },
+                { element: topicSetupScreen, id: 'topicSetupScreen' },
+                { element: topicAgreementScreen, id: 'topicAgreementScreen' },
+                { element: userInputScreen, id: 'userInputScreen' },
+                { element: waitingScreen, id: 'waitingScreen' },
+                { element: resultsScreen, id: 'resultsScreen' }
+            ];
+            
+            const currentScreen = screens.find(screen => !screen.element.classList.contains('hidden'));
+            return currentScreen ? currentScreen.id : 'loginScreen';
+        }
+
+        // Page visibility API for mobile background handling
+        function handleVisibilityChange() {
+            if (document.visibilityState === 'hidden') {
+                // User backgrounded the app
+                addDebugLog('App backgrounded - saving state', 'info');
+                saveSessionState();
+            } else if (document.visibilityState === 'visible') {
+                // User returned to the app
+                addDebugLog('App restored - checking connection', 'info');
+                
+                // Attempt to restore WebSocket connection if needed
+                if (sessionData.sessionId && (!sessionData.ws || sessionData.ws.readyState !== WebSocket.OPEN)) {
+                    addDebugLog('Reconnecting after app restoration...', 'info');
+                    setTimeout(() => {
+                        if (sessionData.isCreator) {
+                            initLocalSession();
+                        } else {
+                            joinLocalSession();
+                        }
+                    }, 1000);
+                }
+            }
+        }
+
         // WebSocket session creation with privacy-first signaling server
         async function initLocalSession() {
             try {
-                addDebugLog('Attempting connection to signaling server...', 'info');
-                showNotification('Connecting to secure server...', 'info');
+                addDebugLog('Connecting to privacy-first signaling server...', 'info');
                 
                 await connectWebSocket();
                 
@@ -470,26 +433,20 @@
                     addDebugLog('Session creation request sent', 'info');
                 }
                 
-            } catch (error) {
-                addDebugLog(`Error initializing session: ${error.message}`, 'warning');
-                sessionData.connectionState = 'failed';
-                sessionData.connectionFailed = true;
-                updateConnectionStatus();
-                showNotification('Server unavailable - will work offline', 'warning');
+                // Save state after successful connection
+                saveSessionState();
                 
-                // Enable offline mode immediately for creators
-                if (sessionData.isCreator) {
-                    sessionData.offlineMode = true;
-                    sessionData.connectionState = 'offline';
-                    updateConnectionStatus();
-                }
+            } catch (error) {
+                addDebugLog(`Error initializing session: ${error.message}`, 'error');
+                sessionData.connectionState = 'failed';
+                updateConnectionStatus();
+                showNotification('Session setup failed - please try again', 'error');
             }
         }
 
         async function joinLocalSession() {
             try {
-                addDebugLog('Attempting to join session...', 'info');
-                showNotification('Connecting to session...', 'info');
+                addDebugLog('Joining session via signaling server...', 'info');
                 
                 await connectWebSocket();
                 
@@ -502,20 +459,14 @@
                     addDebugLog('Session join request sent', 'info');
                 }
                 
+                // Save state after successful connection
+                saveSessionState();
+                
             } catch (error) {
-                addDebugLog(`Error joining session: ${error.message}`, 'warning');
+                addDebugLog(`Error joining session: ${error.message}`, 'error');
                 sessionData.connectionState = 'failed';
-                sessionData.connectionFailed = true;
                 updateConnectionStatus();
-                showNotification('Connection failed - continuing in offline mode', 'warning');
-                
-                // Enable offline mode for joiners too
-                sessionData.offlineMode = true;
-                sessionData.connectionState = 'offline';
-                updateConnectionStatus();
-                
-                // Allow them to proceed with topic agreement in offline mode
-                enableOfflineMode();
+                showNotification('Failed to join session - please try again', 'error');
             }
         }
         
@@ -529,109 +480,74 @@
                     
                     addDebugLog('Connecting to: ' + wsUrl, 'info');
                     
-                    // Close existing connection if any
-                    if (sessionData.ws) {
-                        sessionData.ws.close();
-                        sessionData.ws = null;
-                    }
-                    
                     sessionData.ws = new WebSocket(wsUrl);
                     
-                    // Set shorter timeout to fail fast - reduce from 8s to 5s 
+                    // Set a longer timeout for Render cold starts
                     const connectionTimeout = setTimeout(() => {
-                        if (sessionData.ws && sessionData.ws.readyState === WebSocket.CONNECTING) {
-                            addDebugLog('Connection timeout after 5s - server unavailable', 'warning');
+                        if (sessionData.ws.readyState === WebSocket.CONNECTING) {
+                            addDebugLog('Connection timeout - service may be sleeping', 'warning');
                             sessionData.ws.close();
-                            sessionData.ws = null;
                             reject(new Error('Connection timeout'));
                         }
-                    }, 5000); // 5 second timeout for faster failover
+                    }, 30000); // 30 second timeout for cold starts
                     
                     sessionData.ws.onopen = () => {
                         clearTimeout(connectionTimeout);
-                        addDebugLog('Connected to signaling server successfully', 'success');
+                        addDebugLog('Connected to signaling server', 'success');
                         sessionData.reconnectAttempts = 0;
                         sessionData.connectionState = 'connected';
-                        sessionData.connectionFailed = false;
-                        sessionData.offlineMode = false;
                         updateConnectionStatus();
                         resolve();
                     };
                     
                     sessionData.ws.onmessage = (event) => {
-                        try {
-                            const data = JSON.parse(event.data);
-                            handleWebSocketMessage(data);
-                        } catch (parseError) {
-                            addDebugLog('Failed to parse WebSocket message: ' + parseError.message, 'error');
-                        }
+                        handleWebSocketMessage(JSON.parse(event.data));
                     };
                     
-                    sessionData.ws.onclose = (event) => {
+                    sessionData.ws.onclose = () => {
                         clearTimeout(connectionTimeout);
-                        addDebugLog(`WebSocket closed: code=${event.code}, reason=${event.reason}`, 'warning');
+                        addDebugLog('Disconnected from signaling server', 'warning');
                         sessionData.connectionState = 'disconnected';
                         updateConnectionStatus();
-                        
-                        // Don't attempt reconnect if we're in offline mode or deliberately closing
-                        if (!sessionData.offlineMode && event.code !== 1000) {
-                            attemptReconnect();
-                        }
+                        attemptReconnect();
                     };
                     
                     sessionData.ws.onerror = (error) => {
                         clearTimeout(connectionTimeout);
-                        addDebugLog('WebSocket error: ' + (error.message || 'Network connection failed'), 'error');
-                        sessionData.connectionState = 'failed';
-                        updateConnectionStatus();
+                        addDebugLog('WebSocket error: ' + (error.message || 'Connection failed'), 'error');
                         reject(error);
                     };
                     
                 } catch (error) {
-                    addDebugLog('Failed to create WebSocket: ' + error.message, 'error');
                     reject(error);
                 }
             });
         }
         
         function attemptReconnect() {
-            // Don't attempt reconnect if we're in offline mode or have no session
-            if (sessionData.offlineMode || !sessionData.sessionId) {
-                return;
-            }
-            
             if (sessionData.reconnectAttempts < sessionData.maxReconnectAttempts) {
                 sessionData.reconnectAttempts++;
                 addDebugLog(`Attempting reconnect ${sessionData.reconnectAttempts}/${sessionData.maxReconnectAttempts}`, 'warning');
                 
-                // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-                const backoffDelay = Math.min(1000 * Math.pow(2, sessionData.reconnectAttempts - 1), 16000);
-                
-                setTimeout(async () => {
-                    if (sessionData.sessionId && !sessionData.offlineMode) {
-                        try {
-                            addDebugLog(`Reconnect attempt ${sessionData.reconnectAttempts}...`, 'info');
-                            if (sessionData.isCreator) {
-                                await initLocalSession();
-                            } else {
-                                await joinLocalSession();
+                setTimeout(() => {
+                    if (sessionData.sessionId) {
+                        // Don't change UI during reconnect - maintain current screen
+                        const currentScreen = getCurrentScreen();
+                        sessionData.isCreator ? initLocalSession() : joinLocalSession();
+                        
+                        // Restore screen after reconnect attempt
+                        setTimeout(() => {
+                            if (currentScreen && sessionData.connectionState !== 'connected') {
+                                showScreen(currentScreen);
                             }
-                        } catch (error) {
-                            addDebugLog(`Reconnect attempt ${sessionData.reconnectAttempts} failed: ${error.message}`, 'error');
-                            // Continue to next attempt or fail
-                        }
+                        }, 1000);
                     }
-                }, backoffDelay);
+                }, 2000 * sessionData.reconnectAttempts);
             } else {
-                addDebugLog('Max reconnect attempts reached - enabling offline mode', 'warning');
-                sessionData.connectionState = 'offline';
-                sessionData.connectionFailed = true;
-                sessionData.offlineMode = true;
+                addDebugLog('Max reconnect attempts reached', 'error');
+                sessionData.connectionState = 'failed';
                 updateConnectionStatus();
-                showNotification('Connection failed. App will work offline - limited functionality available.', 'warning');
-                
-                // Allow user to proceed without connection
-                enableOfflineMode();
+                showNotification('Connection lost. Please refresh the page.', 'error');
             }
         }
         
@@ -664,6 +580,7 @@
                         }
                         sessionData.connectionState = 'connected';
                         updateConnectionStatus();
+                        saveSessionState(); // Save when partner joins
                         break;
                         
                     case 'participant_left':
@@ -728,6 +645,10 @@
                     default:
                         addDebugLog(`Unknown message type: ${message.type}`, 'warning');
                 }
+                
+                // Auto-save state after important messages
+                saveSessionState();
+                
             } catch (error) {
                 addDebugLog(`Error handling message: ${error.message}`, 'error');
             }
@@ -735,45 +656,30 @@
         
         async function sendMessage(message) {
             try {
-                // If offline mode, still return true to allow app flow to continue
-                if (sessionData.offlineMode) {
-                    addDebugLog(`Message queued for offline mode: ${message.type}`, 'warning');
-                    return true;
-                }
-                
                 if (!sessionData.ws || sessionData.ws.readyState !== WebSocket.OPEN) {
-                    addDebugLog('Cannot send message - WebSocket not connected', 'warning');
-                    
-                    // Don't spam reconnection attempts or show repeated notifications
-                    if (!sessionData.connectionFailed) {
-                        attemptReconnect();
-                    }
-                    
-                    // Still return true to allow app flow in offline mode
-                    return true;
+                    addDebugLog('Cannot send message - not connected to signaling server', 'error');
+                    showNotification('Not connected - trying to reconnect...', 'warning');
+                    attemptReconnect();
+                    return false;
                 }
                 
-                const messagePayload = {
+                sessionData.ws.send(JSON.stringify({
                     type: 'relay_message',
                     messageType: message.type,
                     content: message.content || message
-                };
-                
-                sessionData.ws.send(JSON.stringify(messagePayload));
-                addDebugLog(`Message sent successfully: ${message.type}`, 'info');
+                }));
                 
                 return true;
                 
             } catch (error) {
                 addDebugLog(`Error sending message: ${error.message}`, 'error');
-                // Don't show error notification - just log it
+                showNotification('Message failed to send', 'warning');
                 return false;
             }
         }
         
         function handleMessage(message) {
             console.log('Received message:', message);
-            addDebugLog(`Processing message: ${message.type} from ${message.sender}`, 'info');
             
             switch (message.type) {
                 case 'userJoined':
@@ -781,100 +687,50 @@
                     updateTopicAgreementScreen();
                     showNotification(`${message.sender} joined the session!`, 'success');
                     break;
-                    
                 case 'topicModified':
-                    addDebugLog(`Topic modified by ${message.sender}: ${message.topic}`, 'info');
                     sessionData.topic = message.topic;
-                    // Reset agreement states when topic is modified
-                    sessionData.topicAgreed = false;
-                    sessionData.partnerTopicAgreed = false;
-                    
-                    // Update UI immediately
                     const proposedTopicEl = document.getElementById('proposedTopic');
                     if (proposedTopicEl) {
                         proposedTopicEl.textContent = message.topic;
                     }
-                    
-                    // Clear any existing agreement status
-                    const existingStatus = document.querySelector('.agreement-status');
-                    if (existingStatus) {
-                        existingStatus.remove();
-                    }
-                    
                     showNotification(`${message.sender} modified the topic`, 'info');
                     break;
-                    
                 case 'topicAgreed':
-                    addDebugLog(`${message.sender} agreed to topic`, 'success');
-                    sessionData.partnerTopicAgreed = true;
                     showNotification(`${message.sender} agreed to the topic!`, 'success');
-                    checkMutualTopicAgreement();
                     break;
-                    
                 case 'proceedToInputs':
-                    addDebugLog('Received proceed to inputs signal', 'info');
                     proceedToPrivateInputs();
                     break;
-                    
                 case 'userInputsSubmitted':
-                    addDebugLog(`Received inputs from ${message.sender}`, 'info');
                     handlePartnerInputsReceived(message);
                     break;
-                    
                 case 'negotiationComplete':
                     addDebugLog(`Received negotiation results from ${message.sender}`, 'success');
-                    if (message.content) {
-                        displayNegotiationResult(message.content);
-                    } else {
-                        addDebugLog('Warning: negotiationComplete message missing content', 'warning');
-                    }
+                    displayNegotiationResult(message.content);
                     break;
-                    
                 case 'ping':
-                    addDebugLog(`Ping received from ${message.sender}`, 'info');
-                    showNotification(`Connection test from ${message.sender}`, 'info');
+                    showNotification(`Ping from ${message.sender}`, 'success');
                     // Send pong back
                     sendMessage({
                         type: 'pong',
                         userName: sessionData.userName
                     });
                     break;
-                    
                 case 'pong':
-                    addDebugLog(`Pong received from ${message.sender}`, 'success');
-                    showNotification(`Connection confirmed with ${message.sender}`, 'success');
+                    showNotification(`Pong from ${message.sender}`, 'success');
                     break;
-                    
-                default:
-                    addDebugLog(`Unknown message type: ${message.type}`, 'warning');
             }
+            
+            // Save state after handling message
+            saveSessionState();
         }
         
-        function enableOfflineMode() {
-            addDebugLog('Enabling offline mode - user can proceed without P2P connection', 'info');
-            
-            // If user is on topic agreement screen, allow them to proceed
-            if (getCurrentScreen() === topicAgreementScreen) {
-                // In offline mode, auto-agree topic after a short delay
-                setTimeout(() => {
-                    sessionData.topicAgreed = true;
-                    sessionData.partnerTopicAgreed = true; // Simulate partner agreement in offline mode
-                    showNotification('Topic agreed! Proceeding in offline mode...', 'success');
-                    proceedToPrivateInputs();
-                }, 2000);
-            }
-        }
-
         function updateConnectionStatus() {
             const statusElement = document.getElementById('connectionStatus');
             if (statusElement) {
-                const state = sessionData.connectionState;
-                if (state === 'connected') {
+                const isConnected = sessionData.connectionState === 'connected';
+                if (isConnected) {
                     statusElement.innerHTML = '<span style="color: #10B981;">🛡️ P2P Active</span>';
-                } else if (state === 'offline' || sessionData.offlineMode) {
-                    statusElement.innerHTML = '<span style="color: #F59E0B;">📱 Offline Mode</span>';
-                } else if (state === 'failed') {
-                    statusElement.innerHTML = '<span style="color: #EF4444;">❌ Connection Failed</span>';
                 } else {
                     statusElement.innerHTML = '<span style="color: #6B7280;">🔗 Connecting...</span>';
                 }
@@ -882,16 +738,15 @@
         }
         
         function showNotification(message, type = 'info') {
-            // Prevent notification spam during connection issues
-            if (sessionData.connectionFailed && message.includes('not connected')) {
-                return; // Skip redundant connection error notifications
-            }
-            
-            // Limit to one notification at a time to prevent overlapping
-            const existing = document.querySelector('.align-notification');
-            if (existing) {
-                existing.remove();
-            }
+            // Remove any existing notifications first
+            const existing = document.querySelectorAll('.align-notification');
+            existing.forEach(el => {
+                try {
+                    el.remove();
+                } catch (e) {
+                    // Ignore errors removing elements
+                }
+            });
             
             const colors = {
                 info: '#3B82F6',
@@ -903,68 +758,56 @@
             const notification = document.createElement('div');
             notification.className = 'align-notification';
             
-            // Use simple inline styles to avoid conflicts
-            notification.style.cssText = `
-                position: fixed;
-                top: 1rem;
-                right: 1rem;
-                background-color: ${colors[type]};
-                color: white;
-                padding: 0.75rem 1rem;
-                border-radius: 0.5rem;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                z-index: 99999;
-                max-width: 300px;
-                font-size: 0.875rem;
-                font-family: Inter, system-ui, sans-serif;
-                font-weight: 500;
-                opacity: 0;
-                transform: translateY(-10px);
-                transition: all 0.3s ease;
-                pointer-events: none;
-                word-wrap: break-word;
-            `;
+            // Set all styles as individual properties to avoid TailwindCSS conflicts
+            notification.style.position = 'fixed';
+            notification.style.top = '1rem';
+            notification.style.right = '1rem';
+            notification.style.backgroundColor = colors[type];
+            notification.style.color = 'white';
+            notification.style.padding = '0.75rem 1rem';
+            notification.style.borderRadius = '0.5rem';
+            notification.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+            notification.style.zIndex = '9999';
+            notification.style.maxWidth = '300px';
+            notification.style.fontSize = '0.875rem';
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateY(-10px)';
+            notification.style.transition = 'all 0.3s ease';
+            notification.style.fontFamily = 'system-ui, sans-serif';
             
-            const icons = {
-                success: '✅',
-                warning: '⚠️', 
-                error: '❌',
-                info: '📡'
-            };
+            notification.innerHTML = `<span style="margin-right: 0.5rem;">📡</span>${message}`;
             
-            notification.innerHTML = `${icons[type] || icons.info} ${message}`;
+            // Append to container instead of body to avoid TailwindCSS scanning
+            const container = document.querySelector('.container') || document.body;
+            container.appendChild(notification);
             
-            document.body.appendChild(notification);
-            
-            // Animate in
+            // Trigger animation
             requestAnimationFrame(() => {
                 notification.style.opacity = '1';
                 notification.style.transform = 'translateY(0)';
             });
             
-            // Auto-remove after 4 seconds
             setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.style.opacity = '0';
-                    notification.style.transform = 'translateY(-10px)';
-                    setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateY(-10px)';
+                setTimeout(() => {
+                    try {
                         if (notification.parentNode) {
                             notification.remove();
                         }
-                    }, 300);
-                }
+                    } catch (e) {
+                        // Ignore removal errors
+                    }
+                }, 300);
             }, 4000);
         }
 
         // Session URL management with WebRTC signaling
-        function createSessionURL(sessionId, topic, creator, isInitiator = false) {
+        function createSessionURL(sessionId, topic, creator) {
             const params = new URLSearchParams();
             params.set('session', sessionId);
             params.set('topic', encodeURIComponent(topic));
             params.set('creator', encodeURIComponent(creator));
-            if (isInitiator) {
-                params.set('initiator', 'true');
-            }
             return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
         }
 
@@ -984,14 +827,12 @@
             const sessionId = urlParams.get('session');
             const topic = urlParams.get('topic');
             const creator = urlParams.get('creator');
-            const isInitiator = urlParams.get('initiator') === 'true';
             
             if (sessionId && topic) {
                 return {
                     sessionId: sessionId,
                     topic: decodeURIComponent(topic),
-                    creator: creator ? decodeURIComponent(creator) : 'Creator',
-                    isInitiator: isInitiator
+                    creator: creator ? decodeURIComponent(creator) : 'Creator'
                 };
             }
             return null;
@@ -1002,6 +843,9 @@
                 screen.classList.add('hidden');
             });
             screenElement.classList.remove('hidden');
+            
+            // Save state when screen changes
+            saveSessionState();
         }
 
         function updateStepIndicator(step) {
@@ -1031,19 +875,10 @@
             const urlData = getSessionDataFromURL();
             if (urlData && urlData.sessionId) {
                 sessionData.sessionId = urlData.sessionId;
+                sessionData.isCreator = false;
                 sessionData.topic = urlData.topic;
-                
-                if (urlData.isInitiator) {
-                    // Returning initiator - restore their session
-                    sessionData.isCreator = true;
-                    sessionData.partnerName = null;
-                    resumeInitiatorSession();
-                } else {
-                    // Joining user
-                    sessionData.isCreator = false;
-                    sessionData.partnerName = urlData.creator;
-                    joinExistingSession();
-                }
+                sessionData.partnerName = urlData.creator;
+                joinExistingSession();
             } else {
                 showScreen(topicSetupScreen);
             }
@@ -1071,10 +906,6 @@
             document.getElementById('shareInfo').classList.remove('hidden');
             document.getElementById('shareSessionBtn').classList.remove('hidden');
             document.getElementById('createTopicBtn').classList.add('hidden');
-            
-            // Redirect initiator to their own URL for session persistence
-            const initiatorURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName, true);
-            window.history.pushState({}, '', initiatorURL);
             
             showNotification('Session created! Share the link for private P2P collaboration.', 'success');
         });
@@ -1113,8 +944,12 @@
                 userName: sessionData.userName
             });
             
-            // Check if both users have agreed
-            checkMutualTopicAgreement();
+            // Send proceed signal
+            await sendMessage({
+                type: 'proceedToInputs'
+            });
+            
+            proceedToPrivateInputs();
         });
 
         document.getElementById('modifyTopic').addEventListener('click', () => {
@@ -1130,9 +965,6 @@
             
             // Update local topic
             sessionData.topic = modification;
-            // Reset agreement states when topic is modified
-            sessionData.topicAgreed = false;
-            sessionData.partnerTopicAgreed = false;
             document.getElementById('proposedTopic').textContent = modification;
             
             // Send to peer via Firebase
@@ -1182,61 +1014,8 @@
             showNotification('Inputs submitted! Waiting for your partner...', 'success');
         });
 
-        async function resumeInitiatorSession() {
-            addDebugLog('Resuming initiator session for mobile user', 'info');
-            const urlData = getSessionDataFromURL();
-            
-            try {
-                // Initialize local P2P session as creator
-                await initLocalSession();
-                
-                // Set up sharing UI immediately
-                const shareURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName);
-                document.getElementById('shareLink').value = shareURL;
-                document.getElementById('sessionIdDisplay').textContent = sessionData.sessionId;
-                
-                // Check connection state and restore appropriate screen
-                setTimeout(() => {
-                    if (sessionData.connectionState === 'connected' && sessionData.partnerName) {
-                        // Partner is connected - go to topic agreement screen
-                        addDebugLog('Partner connected, restoring topic agreement screen', 'info');
-                        showScreen(topicAgreementScreen);
-                        updateTopicAgreementScreen();
-                        showNotification('Session restored! Your partner is connected.', 'success');
-                    } else if (sessionData.connectionState === 'connected') {
-                        // Connected but no partner - show sharing screen
-                        addDebugLog('Connected but no partner, showing sharing screen', 'info');
-                        showScreen(topicSetupScreen);
-                        document.getElementById('topicInput').value = sessionData.topic;
-                        document.getElementById('shareInfo').classList.remove('hidden');
-                        document.getElementById('shareSessionBtn').classList.remove('hidden');
-                        document.getElementById('createTopicBtn').classList.add('hidden');
-                        showNotification('Session restored! Share the link to continue.', 'success');
-                    } else {
-                        // Connection failed - enable offline mode but allow sharing
-                        addDebugLog('Connection failed during restore, showing offline sharing', 'warning');
-                        showScreen(topicSetupScreen);
-                        document.getElementById('topicInput').value = sessionData.topic;
-                        document.getElementById('shareInfo').classList.remove('hidden');
-                        document.getElementById('shareSessionBtn').classList.remove('hidden');
-                        document.getElementById('createTopicBtn').classList.add('hidden');
-                        showNotification('Session restored (offline). Share the link - connections will sync when available.', 'warning');
-                    }
-                }, 2000); // Give WebSocket more time to establish connection
-            } catch (error) {
-                // Connection failed - still allow user to proceed
-                addDebugLog('Failed to restore initiator session, enabling offline mode', 'error');
-                showScreen(topicSetupScreen);
-                document.getElementById('topicInput').value = sessionData.topic;
-                document.getElementById('shareInfo').classList.remove('hidden');
-                document.getElementById('shareSessionBtn').classList.remove('hidden');
-                document.getElementById('createTopicBtn').classList.add('hidden');
-                showNotification('Session restored (offline mode). You can still share the link.', 'warning');
-            }
-        }
-
         async function joinExistingSession() {
-            addDebugLog('Attempting to join existing session (mobile-friendly)', 'info');
+            addDebugLog('Attempting to join existing session', 'info');
             const urlData = getSessionDataFromURL();
             
             if (!urlData || !urlData.topic) {
@@ -1256,38 +1035,12 @@
             sessionData.isCreator = false;
             sessionData.partnerName = urlData.creator;
             
-            try {
-                // Attempt to join P2P session
-                await joinLocalSession();
-                
-                // Show topic agreement screen regardless of connection status
-                showScreen(topicAgreementScreen);
-                updateTopicAgreementScreen(urlData.creator);
-                
-                // Provide feedback based on connection status
-                setTimeout(() => {
-                    if (sessionData.connectionState === 'connected') {
-                        showNotification('Successfully joined the session!', 'success');
-                    } else {
-                        showNotification('Joined session (offline). Changes will sync when connection is available.', 'warning');
-                        // Enable offline mode for this joiner
-                        enableOfflineMode();
-                    }
-                }, 1000);
-            } catch (error) {
-                addDebugLog('Failed to join session, proceeding in offline mode', 'warning');
-                
-                // Still proceed to topic agreement screen - offline mode
-                showScreen(topicAgreementScreen);
-                updateTopicAgreementScreen(urlData.creator);
-                showNotification('Joined session (offline mode). App will work with limited functionality.', 'warning');
-                
-                // Enable offline mode
-                sessionData.offlineMode = true;
-                sessionData.connectionState = 'offline';
-                updateConnectionStatus();
-                enableOfflineMode();
-            }
+            // Join local P2P session
+            await joinLocalSession();
+            
+            // Show topic agreement screen
+            showScreen(topicAgreementScreen);
+            updateTopicAgreementScreen(urlData.creator);
         }
         
         // Session cleanup for privacy
@@ -1363,59 +1116,6 @@
             }
             
             updateConnectionStatus();
-        }
-
-        function checkMutualTopicAgreement() {
-            addDebugLog(`Mutual agreement check: User=${sessionData.topicAgreed}, Partner=${sessionData.partnerTopicAgreed}`, 'info');
-            
-            if (sessionData.topicAgreed && sessionData.partnerTopicAgreed) {
-                // Both users have agreed - proceed to private inputs
-                addDebugLog('Both users agreed to topic - proceeding to private inputs', 'success');
-                showNotification('Both parties agreed! Moving to private inputs...', 'success');
-                
-                // Send proceed signal to partner (if connected)
-                if (sessionData.connectionState === 'connected') {
-                    sendMessage({
-                        type: 'proceedToInputs',
-                        userName: sessionData.userName
-                    });
-                }
-                
-                // Proceed immediately for this user
-                setTimeout(() => {
-                    proceedToPrivateInputs();
-                }, 1000);
-            } else {
-                // Update UI to show current agreement status
-                updateTopicAgreementStatus();
-            }
-        }
-        
-        function updateTopicAgreementStatus() {
-            // Update UI to show which users have agreed
-            const topicActions = document.getElementById('topicActions');
-            if (topicActions) {
-                let statusMsg = '';
-                if (sessionData.topicAgreed && !sessionData.partnerTopicAgreed) {
-                    statusMsg = '<div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg"><i class="fas fa-clock text-yellow-600 mr-2"></i>You agreed! Waiting for your partner to agree...</div>';
-                } else if (!sessionData.topicAgreed && sessionData.partnerTopicAgreed) {
-                    statusMsg = '<div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg"><i class="fas fa-check text-blue-600 mr-2"></i>Your partner agreed! Do you agree with this topic?</div>';
-                }
-                
-                // Remove existing status message
-                const existingStatus = document.querySelector('.agreement-status');
-                if (existingStatus) {
-                    existingStatus.remove();
-                }
-                
-                // Add new status message
-                if (statusMsg) {
-                    const statusDiv = document.createElement('div');
-                    statusDiv.className = 'agreement-status';
-                    statusDiv.innerHTML = statusMsg;
-                    topicActions.appendChild(statusDiv);
-                }
-            }
         }
 
         function proceedToPrivateInputs() {
@@ -1575,42 +1275,12 @@
             `;
         }
         
-        async function mockLLMCall(prompt) {
-            console.log("Mock LLM Call - this shouldn't be used anymore");
-            return {
-                "backchannel": [
-                    "Identified User A's critical afternoon time block as a primary constraint.",
-                    "Recognized User B's need for a consolidated 4-hour work period.",
-                    "Cross-referenced both schedules to find non-overlapping availability.",
-                    "Proposed a time-swapping solution to ensure fairness and equal work time.",
-                    "Confirmed that the proposed solution respects all non-negotiable 'red lines' for both parties."
-                ],
-                "agreement": `
-                    <h4 class="text-xl font-bold">Agreement: Childcare for Thursday & Friday</h4>
-                    <hr class="my-4">
-                    <h5><strong>Principles:</strong></h5>
-                    <p>This plan ensures both partners get the focused work time they need, acknowledging that both roles are equally important. It is designed to be fair, equitable, and predictable.</p>
-                    <br>
-                    <h5><strong>Thursday's Plan:</strong></h5>
-                    <ul class="list-disc pl-6">
-                        <li><strong>9:00 AM - 1:00 PM:</strong> Partner B has 4 hours of uninterrupted work. Partner A handles childcare.</li>
-                        <li><strong>1:00 PM - 5:00 PM:</strong> Partner A has uninterrupted time for work/calls. Partner B handles childcare.</li>
-                    </ul>
-                    <br>
-                    <h5><strong>Friday's Plan:</strong></h5>
-                     <ul class="list-disc pl-6">
-                        <li><strong>9:00 AM - 1:00 PM:</strong> Partner A has 4 hours of uninterrupted work. Partner B handles childcare.</li>
-                    </ul>
-                    <br>
-                    <h5><strong>Review:</strong></h5>
-                    <p>Let's check in Thursday evening to confirm this plan feels balanced and works for Friday.</p>
-                `
-            };
-        }
-        
         function startOver() {
             // Clean up polling and session data
             cleanupSession();
+            
+            // Clear saved state
+            localStorage.removeItem('alignSessionState');
             
             // Reset all state
             sessionData = {
@@ -1618,7 +1288,6 @@
                 userName: '',
                 topic: '',
                 topicAgreed: false,
-                partnerTopicAgreed: false,
                 isCreator: false,
                 connectionState: 'disconnected',
                 partnerName: null,
@@ -1657,23 +1326,108 @@
         window.onload = () => {
             updateStepIndicator(1);
             
-            // Check if joining existing session or returning initiator
+            // Set up mobile persistence
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            
+            // Try to restore previous session state
+            const restoredScreen = loadSessionState();
+            
+            // Check if joining existing session or has restored state
             const urlData = getSessionDataFromURL();
             if (urlData && urlData.sessionId) {
+                // Joining existing session - show login with context
                 const loginMessage = document.getElementById('loginMessage');
                 if (loginMessage) {
-                    if (urlData.isInitiator) {
-                        // Returning initiator
-                        loginMessage.innerHTML = 
-                            `<i class="fas fa-user-plus text-indigo-600 mr-2"></i>Welcome back!<br><strong>Your Topic:</strong> ${urlData.topic || 'Loading...'}<br><small class="text-gray-500">Your session is ready to share</small>`;
-                    } else {
-                        // Joining user
-                        loginMessage.innerHTML = 
-                            `<i class="fas fa-cloud text-indigo-600 mr-2"></i>You're joining a real-time session!<br><strong>Topic:</strong> ${urlData.topic || 'Loading...'}<br><small class="text-gray-500">Secure collaborative negotiation</small>`;
-                    }
+                    loginMessage.innerHTML = 
+                        `<i class="fas fa-cloud text-indigo-600 mr-2"></i>You're joining a real-time session!<br><strong>Topic:</strong> ${urlData.topic || 'Loading...'}<br><small class="text-gray-500">Secure collaborative negotiation</small>`;
                 }
-                showScreen(loginScreen);
-                addDebugLog(urlData.isInitiator ? 'Detected returning initiator' : 'Detected session join request', 'info');
+                
+                if (restoredScreen && sessionData.userName) {
+                    // Restore to previous screen if we have saved state
+                    addDebugLog(`Restoring to screen: ${restoredScreen}`, 'info');
+                    const screenElement = document.getElementById(restoredScreen);
+                    if (screenElement) {
+                        showScreen(screenElement);
+                        
+                        // Restore form values if on user input screen
+                        if (restoredScreen === 'userInputScreen') {
+                            document.getElementById('objectives').value = userInputs.objectives || '';
+                            document.getElementById('mustHaves').value = userInputs.mustHaves || '';
+                            document.getElementById('constraints').value = userInputs.constraints || '';
+                            document.getElementById('agreedTopic').textContent = sessionData.topic;
+                        }
+                        
+                        if (restoredScreen === 'topicAgreementScreen') {
+                            updateTopicAgreementScreen();
+                        }
+                        
+                        // Try to reconnect if we have session data
+                        if (sessionData.sessionId && (!sessionData.ws || sessionData.ws.readyState !== WebSocket.OPEN)) {
+                            addDebugLog('Attempting to reconnect restored session...', 'info');
+                            setTimeout(() => {
+                                if (sessionData.isCreator) {
+                                    initLocalSession();
+                                } else {
+                                    joinLocalSession();
+                                }
+                            }, 1000);
+                        }
+                        
+                        showNotification('Session restored from previous visit', 'success');
+                    } else {
+                        showScreen(loginScreen);
+                    }
+                } else {
+                    showScreen(loginScreen);
+                }
+                
+                addDebugLog('Detected session join request', 'info');
+            } else if (restoredScreen && sessionData.sessionId) {
+                // We have saved state but no URL session - likely returning creator
+                addDebugLog(`Restoring session from localStorage: ${restoredScreen}`, 'info');
+                const screenElement = document.getElementById(restoredScreen);
+                if (screenElement) {
+                    showScreen(screenElement);
+                    
+                    // Restore form values and UI state
+                    if (restoredScreen === 'userInputScreen') {
+                        document.getElementById('objectives').value = userInputs.objectives || '';
+                        document.getElementById('mustHaves').value = userInputs.mustHaves || '';
+                        document.getElementById('constraints').value = userInputs.constraints || '';
+                        document.getElementById('agreedTopic').textContent = sessionData.topic;
+                    }
+                    
+                    if (restoredScreen === 'topicSetupScreen') {
+                        document.getElementById('topicInput').value = sessionData.topic;
+                        if (sessionData.sessionId) {
+                            const shareURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName);
+                            document.getElementById('shareLink').value = shareURL;
+                            document.getElementById('sessionIdDisplay').textContent = sessionData.sessionId;
+                            document.getElementById('shareInfo').classList.remove('hidden');
+                            document.getElementById('shareSessionBtn').classList.remove('hidden');
+                            document.getElementById('createTopicBtn').classList.add('hidden');
+                        }
+                    }
+                    
+                    if (restoredScreen === 'topicAgreementScreen') {
+                        updateTopicAgreementScreen();
+                    }
+                    
+                    // Try to reconnect
+                    if (sessionData.ws?.readyState !== WebSocket.OPEN) {
+                        setTimeout(() => {
+                            if (sessionData.isCreator) {
+                                initLocalSession();
+                            } else {
+                                joinLocalSession();
+                            }
+                        }, 1000);
+                    }
+                    
+                    showNotification('Session restored! Reconnecting...', 'info');
+                } else {
+                    showScreen(loginScreen);
+                }
             } else {
                 // Normal flow - show login
                 showScreen(loginScreen);
