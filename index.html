@@ -625,7 +625,7 @@
                         if (message.message.includes('not found')) {
                             sessionData.connectionState = 'failed';
                             updateConnectionStatus();
-                            showNotification('Session not found - ask for a new link', 'error');
+                            showNotification('Session expired. Please refresh page to start new session.', 'error');
                         } else if (message.message.includes('already exists')) {
                             // Generate new session ID and retry
                             addDebugLog('Session ID conflict - generating new ID', 'warning');
@@ -660,8 +660,20 @@
             try {
                 if (!sessionData.ws || sessionData.ws.readyState !== WebSocket.OPEN) {
                     addDebugLog('Cannot send message - not connected to signaling server', 'error');
-                    showNotification('Not connected - trying to reconnect...', 'warning');
-                    attemptReconnect();
+                    
+                    // Only show reconnect notification if we haven't already failed
+                    if (sessionData.connectionState !== 'failed') {
+                        showNotification('Not connected - trying to reconnect...', 'warning');
+                        attemptReconnect();
+                    } else {
+                        addDebugLog('Connection permanently failed - message not sent', 'error');
+                    }
+                    return false;
+                }
+                
+                // Check if we're actually connected to a session on the server
+                if (sessionData.connectionState !== 'connected') {
+                    addDebugLog('Not connected to a session', 'warning');
                     return false;
                 }
                 
@@ -1342,11 +1354,21 @@
             // Set up mobile persistence
             document.addEventListener('visibilitychange', handleVisibilityChange);
             
-            // Try to restore previous session state
+            // Check URL first - if no session params, start fresh
+            const urlData = getSessionDataFromURL();
+            
+            if (!urlData || !urlData.sessionId) {
+                // No session in URL - clear any old localStorage and start fresh
+                addDebugLog('No session in URL - starting fresh session', 'info');
+                localStorage.removeItem('alignSessionState');
+                showScreen(loginScreen);
+                return;
+            }
+            
+            // Try to restore previous session state only if URL has session
             const restoredScreen = loadSessionState();
             
             // Check if joining existing session or has restored state
-            const urlData = getSessionDataFromURL();
             if (urlData && urlData.sessionId) {
                 // Joining existing session - show login with context
                 const loginMessage = document.getElementById('loginMessage');

@@ -18,16 +18,16 @@ const wss = new WebSocket.Server({ server });
 // In-memory sessions (ephemeral, no persistence)
 const sessions = new Map();
 
-// Auto-cleanup sessions older than 1 hour
+// Auto-cleanup sessions older than 4 hours (for mobile persistence)
 setInterval(() => {
     const now = Date.now();
     for (const [sessionId, session] of sessions.entries()) {
-        if (now - session.createdAt > 3600000) { // 1 hour
+        if (now - session.createdAt > 14400000) { // 4 hours
             console.log(`Cleaning up expired session: ${sessionId}`);
             sessions.delete(sessionId);
         }
     }
-}, 300000); // Check every 5 minutes
+}, 600000); // Check every 10 minutes
 
 // Keep-alive mechanism for Render
 setInterval(() => {
@@ -116,11 +116,30 @@ function handleCreateSession(ws, message) {
     const { sessionId, topic, userName } = message;
     
     if (sessions.has(sessionId)) {
-        ws.send(JSON.stringify({ 
-            type: 'error', 
-            message: 'Session already exists' 
-        }));
-        return;
+        // Session exists - check if creator is reconnecting
+        const session = sessions.get(sessionId);
+        const creator = session.participants.find(p => p.isCreator && p.userName === userName);
+        
+        if (creator) {
+            // Creator reconnecting - update their WebSocket
+            console.log(`Creator ${userName} reconnecting to session: ${sessionId}`);
+            creator.ws = ws;
+            ws.sessionId = sessionId;
+            ws.userName = userName;
+            
+            ws.send(JSON.stringify({ 
+                type: 'session_created',
+                sessionId,
+                topic: session.topic
+            }));
+            return;
+        } else {
+            ws.send(JSON.stringify({ 
+                type: 'error', 
+                message: 'Session already exists' 
+            }));
+            return;
+        }
     }
     
     const session = {
@@ -155,17 +174,27 @@ function handleJoinSession(ws, message) {
         return;
     }
     
-    // Check if session is full (limit to 2 participants for now)
-    if (session.participants.length >= 2) {
-        ws.send(JSON.stringify({ 
-            type: 'error', 
-            message: 'Session is full' 
-        }));
-        return;
-    }
+    // Check if user is reconnecting (same userName)
+    const existingParticipant = session.participants.find(p => p.userName === userName);
     
-    // Add participant
-    session.participants.push({ userName, ws, isCreator: false });
+    if (existingParticipant) {
+        // User is reconnecting - replace their WebSocket connection
+        console.log(`${userName} reconnecting to session: ${sessionId}`);
+        existingParticipant.ws = ws;
+    } else {
+        // Check if session is full (limit to 2 participants for now)
+        if (session.participants.length >= 2) {
+            ws.send(JSON.stringify({ 
+                type: 'error', 
+                message: 'Session is full' 
+            }));
+            return;
+        }
+        
+        // Add new participant
+        session.participants.push({ userName, ws, isCreator: false });
+        console.log(`${userName} joined session: ${sessionId}`);
+    }
     ws.sessionId = sessionId;
     ws.userName = userName;
     
