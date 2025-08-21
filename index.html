@@ -262,6 +262,7 @@
             userName: '',
             topic: '',
             topicAgreed: false,
+            partnerTopicAgreed: false,
             isCreator: false,
             connectionState: 'disconnected',
             partnerName: null,
@@ -596,6 +597,9 @@
                     break;
                 case 'topicModified':
                     sessionData.topic = message.topic;
+                    // Reset agreement states when topic is modified
+                    sessionData.topicAgreed = false;
+                    sessionData.partnerTopicAgreed = false;
                     const proposedTopicEl = document.getElementById('proposedTopic');
                     if (proposedTopicEl) {
                         proposedTopicEl.textContent = message.topic;
@@ -603,7 +607,9 @@
                     showNotification(`${message.sender} modified the topic`, 'info');
                     break;
                 case 'topicAgreed':
+                    sessionData.partnerTopicAgreed = true;
                     showNotification(`${message.sender} agreed to the topic!`, 'success');
+                    checkMutualTopicAgreement();
                     break;
                 case 'proceedToInputs':
                     proceedToPrivateInputs();
@@ -863,12 +869,8 @@
                 userName: sessionData.userName
             });
             
-            // Send proceed signal
-            await sendMessage({
-                type: 'proceedToInputs'
-            });
-            
-            proceedToPrivateInputs();
+            // Check if both users have agreed
+            checkMutualTopicAgreement();
         });
 
         document.getElementById('modifyTopic').addEventListener('click', () => {
@@ -884,6 +886,9 @@
             
             // Update local topic
             sessionData.topic = modification;
+            // Reset agreement states when topic is modified
+            sessionData.topicAgreed = false;
+            sessionData.partnerTopicAgreed = false;
             document.getElementById('proposedTopic').textContent = modification;
             
             // Send to peer via Firebase
@@ -945,14 +950,24 @@
             document.getElementById('shareLink').value = shareURL;
             document.getElementById('sessionIdDisplay').textContent = sessionData.sessionId;
             
-            // Show topic setup screen with sharing info
-            showScreen(topicSetupScreen);
-            document.getElementById('topicInput').value = sessionData.topic;
-            document.getElementById('shareInfo').classList.remove('hidden');
-            document.getElementById('shareSessionBtn').classList.remove('hidden');
-            document.getElementById('createTopicBtn').classList.add('hidden');
-            
-            showNotification('Session restored! You can continue sharing the link.', 'success');
+            // Wait a moment to see if there's already a partner connected
+            setTimeout(() => {
+                if (sessionData.partnerName) {
+                    // Partner is already connected - go to topic agreement screen
+                    addDebugLog('Partner already connected, showing topic agreement screen', 'info');
+                    showScreen(topicAgreementScreen);
+                    updateTopicAgreementScreen();
+                    showNotification('Session restored! Your partner is waiting for topic agreement.', 'success');
+                } else {
+                    // No partner yet - show sharing screen
+                    showScreen(topicSetupScreen);
+                    document.getElementById('topicInput').value = sessionData.topic;
+                    document.getElementById('shareInfo').classList.remove('hidden');
+                    document.getElementById('shareSessionBtn').classList.remove('hidden');
+                    document.getElementById('createTopicBtn').classList.add('hidden');
+                    showNotification('Session restored! You can continue sharing the link.', 'success');
+                }
+            }, 1000); // Give WebSocket time to detect existing connections
         }
 
         async function joinExistingSession() {
@@ -1057,6 +1072,52 @@
             }
             
             updateConnectionStatus();
+        }
+
+        function checkMutualTopicAgreement() {
+            addDebugLog(`Agreement check: User=${sessionData.topicAgreed}, Partner=${sessionData.partnerTopicAgreed}`, 'info');
+            
+            if (sessionData.topicAgreed && sessionData.partnerTopicAgreed) {
+                // Both users have agreed - proceed to private inputs
+                addDebugLog('Both users agreed to topic - proceeding to private inputs', 'success');
+                
+                // Send proceed signal to both users
+                sendMessage({
+                    type: 'proceedToInputs'
+                });
+                
+                proceedToPrivateInputs();
+            } else {
+                // Update UI to show current agreement status
+                updateTopicAgreementStatus();
+            }
+        }
+        
+        function updateTopicAgreementStatus() {
+            // Update UI to show which users have agreed
+            const topicActions = document.getElementById('topicActions');
+            if (topicActions) {
+                let statusMsg = '';
+                if (sessionData.topicAgreed && !sessionData.partnerTopicAgreed) {
+                    statusMsg = '<div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg"><i class="fas fa-clock text-yellow-600 mr-2"></i>You agreed! Waiting for your partner to agree...</div>';
+                } else if (!sessionData.topicAgreed && sessionData.partnerTopicAgreed) {
+                    statusMsg = '<div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg"><i class="fas fa-check text-blue-600 mr-2"></i>Your partner agreed! Do you agree with this topic?</div>';
+                }
+                
+                // Remove existing status message
+                const existingStatus = document.querySelector('.agreement-status');
+                if (existingStatus) {
+                    existingStatus.remove();
+                }
+                
+                // Add new status message
+                if (statusMsg) {
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = 'agreement-status';
+                    statusDiv.innerHTML = statusMsg;
+                    topicActions.appendChild(statusDiv);
+                }
+            }
         }
 
         function proceedToPrivateInputs() {
@@ -1259,6 +1320,7 @@
                 userName: '',
                 topic: '',
                 topicAgreed: false,
+                partnerTopicAgreed: false,
                 isCreator: false,
                 connectionState: 'disconnected',
                 partnerName: null,
