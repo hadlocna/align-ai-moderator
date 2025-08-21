@@ -914,6 +914,11 @@
             document.getElementById('shareSessionBtn').classList.remove('hidden');
             document.getElementById('createTopicBtn').classList.add('hidden');
             
+            // Update the creator's URL to include initiator=true for session persistence
+            const creatorURL = shareURL + '&initiator=true';
+            window.history.pushState({}, '', creatorURL);
+            addDebugLog(`Creator URL updated: ${creatorURL}`, 'info');
+            
             showNotification('Session created! Share the link for private P2P collaboration.', 'success');
         });
 
@@ -1197,7 +1202,11 @@
                     addDebugLog(`AI negotiation completed in ${result.result.rounds} rounds`, 'success');
                     
                     // Share results with both users via WebSocket
-                    sendMessage('negotiationComplete', result.result);
+                    await sendMessage({
+                        type: 'negotiationComplete',
+                        result: result.result,
+                        userName: sessionData.userName
+                    });
                     
                     // Display results locally
                     displayNegotiationResult(result.result);
@@ -1258,7 +1267,11 @@
             
             setTimeout(() => {
                 // Share mock results with both users via WebSocket
-                sendMessage('negotiationComplete', mockResult);
+                sendMessage({
+                    type: 'negotiationComplete',
+                    result: mockResult,
+                    userName: sessionData.userName
+                });
                 
                 // Display results locally
                 displayNegotiationResult(mockResult);
