@@ -1,6 +1,7 @@
 // AI Negotiation Backend API
 // This handles the secure AI-to-AI negotiation process
 
+require('dotenv').config();
 const OpenAI = require('openai');
 const express = require('express');
 const cors = require('cors');

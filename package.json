@@ -2,7 +2,7 @@
   "name": "align-ai-moderator",
   "version": "1.0.0",
   "description": "A private, fair way to find agreement through AI-to-AI moderated negotiations",
-  "main": "index.html",
+  "main": "server.js",
   "scripts": {
     "dev": "python3 -m http.server 8000",
     "start": "node server.js",
@@ -13,7 +13,8 @@
     "ws": "^8.14.2",
     "openai": "^4.20.1",
     "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
   },
   "keywords": [
     "ai",
