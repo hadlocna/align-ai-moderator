@@ -392,29 +392,6 @@
             return currentScreen ? currentScreen.id : 'loginScreen';
         }
 
-        // Page visibility API for mobile background handling
-        function handleVisibilityChange() {
-            if (document.visibilityState === 'hidden') {
-                // User backgrounded the app
-                addDebugLog('App backgrounded - saving state', 'info');
-                saveSessionState();
-            } else if (document.visibilityState === 'visible') {
-                // User returned to the app
-                addDebugLog('App restored - checking connection', 'info');
-                
-                // Attempt to restore WebSocket connection if needed
-                if (sessionData.sessionId && (!sessionData.ws || sessionData.ws.readyState !== WebSocket.OPEN)) {
-                    addDebugLog('Reconnecting after app restoration...', 'info');
-                    setTimeout(() => {
-                        if (sessionData.isCreator) {
-                            initLocalSession();
-                        } else {
-                            joinLocalSession();
-                        }
-                    }, 1000);
-                }
-            }
-        }
 
         // WebSocket session creation with privacy-first signaling server
         async function initLocalSession() {
@@ -1355,18 +1332,36 @@
             updateStepIndicator(1);
         }
 
-        // Initialize app
+        // Handle browser backgrounding/foregrounding (mobile and desktop)
+        function handleVisibilityChange() {
+            if (document.visibilityState === 'visible') {
+                addDebugLog('App foregrounded - checking session status', 'info');
+                
+                // When user returns to app, reconnect if needed
+                if (sessionData.sessionId && (!sessionData.ws || sessionData.ws.readyState !== WebSocket.OPEN)) {
+                    addDebugLog('Reconnecting after app was backgrounded...', 'info');
+                    setTimeout(() => {
+                        attemptReconnect();
+                    }, 1000);
+                }
+            } else if (document.visibilityState === 'hidden') {
+                addDebugLog('App backgrounded - connection may be suspended', 'info');
+            }
+        }
+
+        // Initialize app with simplified URL-based session management
         window.onload = () => {
             updateStepIndicator(1);
+            addDebugLog('App initializing...', 'info');
             
-            // Set up mobile persistence
+            // Set up visibility handling for both mobile and desktop
             document.addEventListener('visibilitychange', handleVisibilityChange);
             
-            // Check URL first - URL is the source of truth for sessions
+            // URL is the source of truth for sessions
             const urlData = getSessionDataFromURL();
             
             if (!urlData || !urlData.sessionId) {
-                // No session in URL - clear any old localStorage and start fresh
+                // No session in URL - clear everything and start fresh
                 addDebugLog('No session in URL - starting fresh session', 'info');
                 localStorage.removeItem('alignSessionState');
                 // Reset session data completely
@@ -1391,6 +1386,44 @@
             if (urlData.creator && !urlData.isInitiator) {
                 sessionData.partnerName = urlData.creator;
             }
+            
+            // Try to restore user data from localStorage if it matches this URL session
+            const savedState = localStorage.getItem('alignSessionState');
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    // Only restore if localStorage matches the current URL session
+                    if (parsed.sessionId === urlData.sessionId) {
+                        addDebugLog('Restoring matching user state from localStorage', 'success');
+                        sessionData.userName = parsed.userName || '';
+                        userInputs = parsed.userInputs || {};
+                    } else {
+                        addDebugLog('localStorage session mismatch - using URL session', 'warning');
+                        localStorage.removeItem('alignSessionState');
+                    }
+                } catch (error) {
+                    addDebugLog(`Error parsing saved session: ${error.message}`, 'error');
+                    localStorage.removeItem('alignSessionState');
+                }
+            }
+            
+            // Set up login message context
+            const loginMessage = document.getElementById('loginMessage');
+            if (loginMessage) {
+                if (urlData.isInitiator) {
+                    loginMessage.innerHTML = `<i class="fas fa-sync text-indigo-600 mr-2"></i>Resume your session<br><strong>Topic:</strong> ${urlData.topic}<br><small class="text-gray-500">Continue where you left off</small>`;
+                } else {
+                    loginMessage.innerHTML = `<i class="fas fa-cloud text-indigo-600 mr-2"></i>Join real-time session<br><strong>Topic:</strong> ${urlData.topic}<br><small class="text-gray-500">Secure collaborative negotiation</small>`;
+                }
+            }
+            
+            // Always start at login screen for URL sessions - ensures proper session lifecycle
+            showScreen(loginScreen);
+            
+            // Save current session state
+            saveSessionState();
+            
+            addDebugLog('App initialized with URL-based session management', 'success');
             
             // Try to restore previous session state only if URL has session
             const restoredScreen = loadSessionState();
