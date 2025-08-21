@@ -707,11 +707,14 @@
         }
 
         // Session URL management with WebRTC signaling
-        function createSessionURL(sessionId, topic, creator) {
+        function createSessionURL(sessionId, topic, creator, isInitiator = false) {
             const params = new URLSearchParams();
             params.set('session', sessionId);
             params.set('topic', encodeURIComponent(topic));
             params.set('creator', encodeURIComponent(creator));
+            if (isInitiator) {
+                params.set('initiator', 'true');
+            }
             return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
         }
 
@@ -731,12 +734,14 @@
             const sessionId = urlParams.get('session');
             const topic = urlParams.get('topic');
             const creator = urlParams.get('creator');
+            const isInitiator = urlParams.get('initiator') === 'true';
             
             if (sessionId && topic) {
                 return {
                     sessionId: sessionId,
                     topic: decodeURIComponent(topic),
-                    creator: creator ? decodeURIComponent(creator) : 'Creator'
+                    creator: creator ? decodeURIComponent(creator) : 'Creator',
+                    isInitiator: isInitiator
                 };
             }
             return null;
@@ -776,10 +781,19 @@
             const urlData = getSessionDataFromURL();
             if (urlData && urlData.sessionId) {
                 sessionData.sessionId = urlData.sessionId;
-                sessionData.isCreator = false;
                 sessionData.topic = urlData.topic;
-                sessionData.partnerName = urlData.creator;
-                joinExistingSession();
+                
+                if (urlData.isInitiator) {
+                    // Returning initiator - restore their session
+                    sessionData.isCreator = true;
+                    sessionData.partnerName = null;
+                    resumeInitiatorSession();
+                } else {
+                    // Joining user
+                    sessionData.isCreator = false;
+                    sessionData.partnerName = urlData.creator;
+                    joinExistingSession();
+                }
             } else {
                 showScreen(topicSetupScreen);
             }
@@ -807,6 +821,10 @@
             document.getElementById('shareInfo').classList.remove('hidden');
             document.getElementById('shareSessionBtn').classList.remove('hidden');
             document.getElementById('createTopicBtn').classList.add('hidden');
+            
+            // Redirect initiator to their own URL for session persistence
+            const initiatorURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName, true);
+            window.history.pushState({}, '', initiatorURL);
             
             showNotification('Session created! Share the link for private P2P collaboration.', 'success');
         });
@@ -914,6 +932,28 @@
             addDebugLog('Private inputs submitted, waiting for partner...', 'info');
             showNotification('Inputs submitted! Waiting for your partner...', 'success');
         });
+
+        async function resumeInitiatorSession() {
+            addDebugLog('Resuming initiator session', 'info');
+            const urlData = getSessionDataFromURL();
+            
+            // Initialize local P2P session as creator
+            await initLocalSession();
+            
+            // Set up sharing UI
+            const shareURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName);
+            document.getElementById('shareLink').value = shareURL;
+            document.getElementById('sessionIdDisplay').textContent = sessionData.sessionId;
+            
+            // Show topic setup screen with sharing info
+            showScreen(topicSetupScreen);
+            document.getElementById('topicInput').value = sessionData.topic;
+            document.getElementById('shareInfo').classList.remove('hidden');
+            document.getElementById('shareSessionBtn').classList.remove('hidden');
+            document.getElementById('createTopicBtn').classList.add('hidden');
+            
+            showNotification('Session restored! You can continue sharing the link.', 'success');
+        }
 
         async function joinExistingSession() {
             addDebugLog('Attempting to join existing session', 'info');
@@ -1257,17 +1297,23 @@
         window.onload = () => {
             updateStepIndicator(1);
             
-            // Check if joining existing session
+            // Check if joining existing session or returning initiator
             const urlData = getSessionDataFromURL();
             if (urlData && urlData.sessionId) {
-                // Joining existing session - show login with context
                 const loginMessage = document.getElementById('loginMessage');
                 if (loginMessage) {
-                    loginMessage.innerHTML = 
-                        `<i class="fas fa-cloud text-indigo-600 mr-2"></i>You're joining a real-time session!<br><strong>Topic:</strong> ${urlData.topic || 'Loading...'}<br><small class="text-gray-500">Secure collaborative negotiation</small>`;
+                    if (urlData.isInitiator) {
+                        // Returning initiator
+                        loginMessage.innerHTML = 
+                            `<i class="fas fa-user-plus text-indigo-600 mr-2"></i>Welcome back!<br><strong>Your Topic:</strong> ${urlData.topic || 'Loading...'}<br><small class="text-gray-500">Your session is ready to share</small>`;
+                    } else {
+                        // Joining user
+                        loginMessage.innerHTML = 
+                            `<i class="fas fa-cloud text-indigo-600 mr-2"></i>You're joining a real-time session!<br><strong>Topic:</strong> ${urlData.topic || 'Loading...'}<br><small class="text-gray-500">Secure collaborative negotiation</small>`;
+                    }
                 }
                 showScreen(loginScreen);
-                addDebugLog('Detected session join request', 'info');
+                addDebugLog(urlData.isInitiator ? 'Detected returning initiator' : 'Detected session join request', 'info');
             } else {
                 // Normal flow - show login
                 showScreen(loginScreen);
