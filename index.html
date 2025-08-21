@@ -454,7 +454,8 @@
                     sessionData.ws.send(JSON.stringify({
                         type: 'join_session',
                         sessionId: sessionData.sessionId,
-                        userName: sessionData.userName
+                        userName: sessionData.userName,
+                        topic: sessionData.topic  // Include topic for session recreation
                     }));
                     addDebugLog('Session join request sent', 'info');
                 }
@@ -1361,15 +1362,34 @@
             // Set up mobile persistence
             document.addEventListener('visibilitychange', handleVisibilityChange);
             
-            // Check URL first - if no session params, start fresh
+            // Check URL first - URL is the source of truth for sessions
             const urlData = getSessionDataFromURL();
             
             if (!urlData || !urlData.sessionId) {
                 // No session in URL - clear any old localStorage and start fresh
                 addDebugLog('No session in URL - starting fresh session', 'info');
                 localStorage.removeItem('alignSessionState');
+                // Reset session data completely
+                sessionData = {
+                    sessionId: null,
+                    userName: '',
+                    topic: '',
+                    isCreator: false,
+                    partnerName: '',
+                    ws: null,
+                    connectionState: 'disconnected'
+                };
                 showScreen(loginScreen);
                 return;
+            }
+            
+            // URL has session - initialize session data from URL (URL is source of truth)
+            addDebugLog(`URL session detected: ${urlData.sessionId}, topic: "${urlData.topic}"`, 'info');
+            sessionData.sessionId = urlData.sessionId;
+            sessionData.topic = urlData.topic;
+            sessionData.isCreator = urlData.isInitiator || false;
+            if (urlData.creator && !urlData.isInitiator) {
+                sessionData.partnerName = urlData.creator;
             }
             
             // Try to restore previous session state only if URL has session

@@ -163,15 +163,29 @@ function handleCreateSession(ws, message) {
 }
 
 function handleJoinSession(ws, message) {
-    const { sessionId, userName } = message;
+    const { sessionId, userName, topic } = message;
     
-    const session = sessions.get(sessionId);
+    let session = sessions.get(sessionId);
     if (!session) {
-        ws.send(JSON.stringify({ 
-            type: 'error', 
-            message: 'Session not found or expired' 
-        }));
-        return;
+        // Session not found on server, but client thinks it should exist
+        // This happens when server restarts or session expires while client was away
+        // Recreate the session if we have topic info
+        if (topic) {
+            console.log(`Recreating expired session: ${sessionId} with topic: ${topic}`);
+            session = {
+                sessionId,
+                topic,
+                createdAt: Date.now(),
+                participants: []
+            };
+            sessions.set(sessionId, session);
+        } else {
+            ws.send(JSON.stringify({ 
+                type: 'error', 
+                message: 'Session not found or expired' 
+            }));
+            return;
+        }
     }
     
     // Check if user is reconnecting (same userName)
