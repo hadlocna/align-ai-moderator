@@ -677,11 +677,18 @@
                     return false;
                 }
                 
-                sessionData.ws.send(JSON.stringify({
+                // Structure the message properly for relay_message
+                const messageToSend = {
                     type: 'relay_message',
                     messageType: message.type,
-                    content: message.content || message
-                }));
+                    content: {
+                        type: message.type,
+                        ...message  // Include all message data in content
+                    }
+                };
+                
+                addDebugLog(`Sending WebSocket message: ${JSON.stringify(messageToSend)}`, 'info');
+                sessionData.ws.send(JSON.stringify(messageToSend));
                 
                 return true;
                 
