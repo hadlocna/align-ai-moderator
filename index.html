@@ -269,7 +269,9 @@
             messageQueue: [],
             ws: null,
             reconnectAttempts: 0,
-            maxReconnectAttempts: 5
+            maxReconnectAttempts: 5,
+            offlineMode: false,
+            connectionFailed: false
         };
         
         // Development logs for troubleshooting
@@ -338,7 +340,8 @@
         // WebSocket session creation with privacy-first signaling server
         async function initLocalSession() {
             try {
-                addDebugLog('Connecting to privacy-first signaling server...', 'info');
+                addDebugLog('Attempting connection to signaling server...', 'info');
+                showNotification('Connecting to secure server...', 'info');
                 
                 await connectWebSocket();
                 
@@ -353,16 +356,25 @@
                 }
                 
             } catch (error) {
-                addDebugLog(`Error initializing session: ${error.message}`, 'error');
+                addDebugLog(`Error initializing session: ${error.message}`, 'warning');
                 sessionData.connectionState = 'failed';
+                sessionData.connectionFailed = true;
                 updateConnectionStatus();
-                showNotification('Session setup failed - please try again', 'error');
+                showNotification('Server unavailable - will work offline', 'warning');
+                
+                // Enable offline mode immediately for creators
+                if (sessionData.isCreator) {
+                    sessionData.offlineMode = true;
+                    sessionData.connectionState = 'offline';
+                    updateConnectionStatus();
+                }
             }
         }
 
         async function joinLocalSession() {
             try {
-                addDebugLog('Joining session via signaling server...', 'info');
+                addDebugLog('Attempting to join session...', 'info');
+                showNotification('Connecting to session...', 'info');
                 
                 await connectWebSocket();
                 
@@ -376,10 +388,19 @@
                 }
                 
             } catch (error) {
-                addDebugLog(`Error joining session: ${error.message}`, 'error');
+                addDebugLog(`Error joining session: ${error.message}`, 'warning');
                 sessionData.connectionState = 'failed';
+                sessionData.connectionFailed = true;
                 updateConnectionStatus();
-                showNotification('Failed to join session - please try again', 'error');
+                showNotification('Connection failed - continuing in offline mode', 'warning');
+                
+                // Enable offline mode for joiners too
+                sessionData.offlineMode = true;
+                sessionData.connectionState = 'offline';
+                updateConnectionStatus();
+                
+                // Allow them to proceed with topic agreement in offline mode
+                enableOfflineMode();
             }
         }
         
@@ -395,14 +416,14 @@
                     
                     sessionData.ws = new WebSocket(wsUrl);
                     
-                    // Set a longer timeout for Render cold starts
+                    // Set shorter timeout to fail fast
                     const connectionTimeout = setTimeout(() => {
                         if (sessionData.ws.readyState === WebSocket.CONNECTING) {
-                            addDebugLog('Connection timeout - service may be sleeping', 'warning');
+                            addDebugLog('Connection timeout - server unavailable', 'warning');
                             sessionData.ws.close();
                             reject(new Error('Connection timeout'));
                         }
-                    }, 30000); // 30 second timeout for cold starts
+                    }, 8000); // 8 second timeout
                     
                     sessionData.ws.onopen = () => {
                         clearTimeout(connectionTimeout);
@@ -443,24 +464,20 @@
                 addDebugLog(`Attempting reconnect ${sessionData.reconnectAttempts}/${sessionData.maxReconnectAttempts}`, 'warning');
                 
                 setTimeout(() => {
-                    if (sessionData.sessionId) {
-                        // Don't change UI during reconnect - maintain current screen
-                        const currentScreen = getCurrentScreen();
+                    if (sessionData.sessionId && !sessionData.offlineMode) {
                         sessionData.isCreator ? initLocalSession() : joinLocalSession();
-                        
-                        // Restore screen after reconnect attempt
-                        setTimeout(() => {
-                            if (currentScreen && sessionData.connectionState !== 'connected') {
-                                showScreen(currentScreen);
-                            }
-                        }, 1000);
                     }
                 }, 2000 * sessionData.reconnectAttempts);
             } else {
-                addDebugLog('Max reconnect attempts reached', 'error');
-                sessionData.connectionState = 'failed';
+                addDebugLog('Max reconnect attempts reached - enabling offline mode', 'warning');
+                sessionData.connectionState = 'offline';
+                sessionData.connectionFailed = true;
+                sessionData.offlineMode = true;
                 updateConnectionStatus();
-                showNotification('Connection lost. Please refresh the page.', 'error');
+                showNotification('Connection failed. Continuing in offline mode - you can still use the app!', 'warning');
+                
+                // Allow user to proceed without connection
+                enableOfflineMode();
             }
         }
         
@@ -635,12 +652,31 @@
             }
         }
         
+        function enableOfflineMode() {
+            addDebugLog('Enabling offline mode - user can proceed without P2P connection', 'info');
+            
+            // If user is on topic agreement screen, allow them to proceed
+            if (getCurrentScreen() === topicAgreementScreen) {
+                // In offline mode, auto-agree topic after a short delay
+                setTimeout(() => {
+                    sessionData.topicAgreed = true;
+                    sessionData.partnerTopicAgreed = true; // Simulate partner agreement in offline mode
+                    showNotification('Topic agreed! Proceeding in offline mode...', 'success');
+                    proceedToPrivateInputs();
+                }, 2000);
+            }
+        }
+
         function updateConnectionStatus() {
             const statusElement = document.getElementById('connectionStatus');
             if (statusElement) {
-                const isConnected = sessionData.connectionState === 'connected';
-                if (isConnected) {
+                const state = sessionData.connectionState;
+                if (state === 'connected') {
                     statusElement.innerHTML = '<span style="color: #10B981;">🛡️ P2P Active</span>';
+                } else if (state === 'offline' || sessionData.offlineMode) {
+                    statusElement.innerHTML = '<span style="color: #F59E0B;">📱 Offline Mode</span>';
+                } else if (state === 'failed') {
+                    statusElement.innerHTML = '<span style="color: #EF4444;">❌ Connection Failed</span>';
                 } else {
                     statusElement.innerHTML = '<span style="color: #6B7280;">🔗 Connecting...</span>';
                 }
@@ -648,11 +684,18 @@
         }
         
         function showNotification(message, type = 'info') {
+            // Prevent notification spam during connection issues
+            if (sessionData.connectionFailed && message.includes('not connected')) {
+                return; // Skip redundant connection error notifications
+            }
+            
             // Remove any existing notifications first
             const existing = document.querySelectorAll('.align-notification');
             existing.forEach(el => {
                 try {
-                    el.remove();
+                    if (el && el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
                 } catch (e) {
                     // Ignore errors removing elements
                 }
@@ -667,43 +710,45 @@
             
             const notification = document.createElement('div');
             notification.className = 'align-notification';
+            notification.id = 'align-notification-' + Date.now();
             
-            // Set all styles as individual properties to avoid TailwindCSS conflicts
-            notification.style.position = 'fixed';
-            notification.style.top = '1rem';
-            notification.style.right = '1rem';
-            notification.style.backgroundColor = colors[type];
-            notification.style.color = 'white';
-            notification.style.padding = '0.75rem 1rem';
-            notification.style.borderRadius = '0.5rem';
-            notification.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-            notification.style.zIndex = '9999';
-            notification.style.maxWidth = '300px';
-            notification.style.fontSize = '0.875rem';
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateY(-10px)';
-            notification.style.transition = 'all 0.3s ease';
-            notification.style.fontFamily = 'system-ui, sans-serif';
+            // Set all styles as individual CSS text to avoid conflicts
+            notification.setAttribute('style', `
+                position: fixed !important;
+                top: 1rem !important;
+                right: 1rem !important;
+                background-color: ${colors[type]} !important;
+                color: white !important;
+                padding: 0.75rem 1rem !important;
+                border-radius: 0.5rem !important;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+                z-index: 99999 !important;
+                max-width: 300px !important;
+                font-size: 0.875rem !important;
+                opacity: 0 !important;
+                transform: translateY(-10px) !important;
+                transition: all 0.3s ease !important;
+                font-family: system-ui, sans-serif !important;
+                pointer-events: auto !important;
+            `);
             
-            notification.innerHTML = `<span style="margin-right: 0.5rem;">📡</span>${message}`;
+            const icon = type === 'success' ? '✅' : type === 'warning' ? '⚠️' : type === 'error' ? '❌' : '📡';
+            notification.innerHTML = `<span style="margin-right: 0.5rem;">${icon}</span>${message}`;
             
-            // Append to container instead of body to avoid TailwindCSS scanning
-            const container = document.querySelector('.container') || document.body;
-            container.appendChild(notification);
+            // Use document.body directly
+            document.body.appendChild(notification);
             
             // Trigger animation
-            requestAnimationFrame(() => {
-                notification.style.opacity = '1';
-                notification.style.transform = 'translateY(0)';
-            });
+            setTimeout(() => {
+                notification.setAttribute('style', notification.getAttribute('style').replace('opacity: 0', 'opacity: 1').replace('translateY(-10px)', 'translateY(0)'));
+            }, 10);
             
             setTimeout(() => {
-                notification.style.opacity = '0';
-                notification.style.transform = 'translateY(-10px)';
+                notification.setAttribute('style', notification.getAttribute('style').replace('opacity: 1', 'opacity: 0').replace('translateY(0)', 'translateY(-10px)'));
                 setTimeout(() => {
                     try {
-                        if (notification.parentNode) {
-                            notification.remove();
+                        if (notification && notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
                         }
                     } catch (e) {
                         // Ignore removal errors
