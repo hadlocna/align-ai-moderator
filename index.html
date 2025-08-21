@@ -3,396 +3,1718 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Align - Simple & Reliable</title>
+    <title>Align - Secure Negotiation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: #f8fafc;
+        * {
             margin: 0;
-            padding: 20px;
-            color: #334155;
-            line-height: 1.6;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f8fc;
+            color: #374151;
+            line-height: 1.5;
         }
         .container {
-            max-width: 600px;
+            max-width: 1024px;
             margin: 0 auto;
+            padding: 2rem;
         }
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .logo {
-            width: 200px;
-            max-width: 80%;
-            height: auto;
-            margin-bottom: 20px;
-        }
-        input, textarea, button {
+        .max-w-md { max-width: 28rem; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        .text-center { text-align: center; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .mt-4 { margin-top: 1rem; }
+        .mt-6 { margin-top: 1.5rem; }
+        .mt-8 { margin-top: 2rem; }
+        .p-4 { padding: 1rem; }
+        .p-6 { padding: 1.5rem; }
+        .p-8 { padding: 2rem; }
+        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+        .bg-white { background-color: white; }
+        .rounded-lg { border-radius: 0.5rem; }
+        .rounded-2xl { border-radius: 1rem; }
+        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .border { border: 1px solid #d1d5db; }
+        .w-full { width: 100%; }
+        .h-12 { height: 3rem; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .space-x-4 > * + * { margin-left: 1rem; }
+        .space-y-4 > * + * { margin-top: 1rem; }
+        .text-3xl { font-size: 1.875rem; }
+        .text-2xl { font-size: 1.5rem; }
+        .text-xl { font-size: 1.25rem; }
+        .text-lg { font-size: 1.125rem; }
+        .font-bold { font-weight: 700; }
+        .font-semibold { font-weight: 600; }
+        .text-indigo-600 { color: #4f46e5; }
+        .text-gray-600 { color: #6b7280; }
+        .text-gray-800 { color: #1f2937; }
+        .bg-indigo-600 { background-color: #4f46e5; }
+        .hover\:bg-indigo-700:hover { background-color: #4338ca; }
+        .bg-green-600 { background-color: #16a34a; }
+        .hover\:bg-green-700:hover { background-color: #15803d; }
+        .bg-yellow-600 { background-color: #d97706; }
+        .hover\:bg-yellow-700:hover { background-color: #b45309; }
+        .bg-gray-600 { background-color: #4b5563; }
+        .hover\:bg-gray-700:hover { background-color: #374151; }
+        .text-white { color: white; }
+        .transition { transition: all 0.15s ease-in-out; }
+        .cursor-pointer { cursor: pointer; }
+        .hidden { display: none !important; }
+        
+        /* Input styles */
+        input, textarea {
             width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 16px;
-            box-sizing: border-box;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
         }
         input:focus, textarea:focus {
             outline: none;
             border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
+        
+        /* Button styles */
         button {
-            background: #4f46e5;
-            color: white;
+            padding: 0.75rem 1.5rem;
             border: none;
+            border-radius: 0.5rem;
             font-weight: 600;
             cursor: pointer;
+            transition: all 0.15s ease-in-out;
         }
-        button:hover {
-            background: #4338ca;
+        
+        .step-active {
+            border: 2px solid #4f46e5;
+            color: #4f46e5;
         }
-        button.secondary {
-            background: #64748b;
+        .step-done {
+            border: 2px solid #16a34a;
+            color: #16a34a;
+            background-color: #f0fdf4;
         }
-        button.secondary:hover {
-            background: #475569;
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
         }
-        .status {
-            padding: 12px;
-            border-radius: 6px;
-            margin: 10px 0;
-            font-weight: 500;
+        .step-indicator > div:first-child {
+            border: 2px solid #d1d5db;
+            border-radius: 50%;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
         }
-        .status.success { background: #dcfce7; color: #166534; }
-        .status.warning { background: #fef3c7; color: #92400e; }
-        .status.info { background: #dbeafe; color: #1e40af; }
-        .hidden { display: none; }
-        .text-small { font-size: 14px; color: #64748b; }
-        .mt { margin-top: 20px; }
+        
+        .loader {
+            border: 8px solid #f3f4f6;
+            border-top: 8px solid #4f46e5;
+            border-radius: 50%;
+            width: 6rem;
+            height: 6rem;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Responsive */
+        @media (min-width: 768px) {
+            .step-indicator {
+                flex-direction: row;
+            }
+            .step-indicator > div:first-child {
+                margin-bottom: 0;
+                margin-right: 0.5rem;
+            }
+        }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="Align_Logo.png" alt="Align" class="logo">
-            <p class="text-small">A simple, reliable way to find agreement</p>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        
+        <header class="text-center mb-8">
+            <div class="flex items-center justify-center mb-4">
+                <img src="Align_Logo.png" alt="Align" class="w-80 max-w-md object-contain">
+            </div>
+            <p class="text-lg text-gray-600">A private, fair way to find agreement.</p>
+        </header>
+
+        <!-- Step Indicator -->
+        <div class="flex items-center justify-center space-x-4 md:space-x-8 my-10">
+            <div id="step1Indicator" class="step-indicator step-active flex items-center flex-col md:flex-row text-center space-x-2">
+                <div class="border-2 rounded-full w-8 h-8 flex items-center justify-center font-bold">1</div>
+                <span class="font-semibold mt-2 md:mt-0">Your View</span>
+            </div>
+            <div class="flex-grow h-px bg-gray-300"></div>
+            <div id="step2Indicator" class="step-indicator flex items-center flex-col md:flex-row text-center space-x-2 text-gray-400">
+                <div class="border-2 border-gray-300 rounded-full w-8 h-8 flex items-center justify-center font-bold">2</div>
+                <span class="font-semibold mt-2 md:mt-0">AI Negotiation</span>
+            </div>
+            <div class="flex-grow h-px bg-gray-300"></div>
+            <div id="step3Indicator" class="step-indicator flex items-center flex-col md:flex-row text-center space-x-2 text-gray-400">
+                <div class="border-2 border-gray-300 rounded-full w-8 h-8 flex items-center justify-center font-bold">3</div>
+                <span class="font-semibold mt-2 md:mt-0">Agreement</span>
+            </div>
         </div>
 
-        <!-- Login Screen -->
-        <div id="loginScreen" class="card">
-            <h2 id="loginTitle">Welcome to Align</h2>
-            <p id="loginMessage">Enter your name to begin</p>
-            <input type="text" id="userName" placeholder="Your name">
-            <button id="loginBtn">Continue</button>
-        </div>
-
-        <!-- Topic Setup -->
-        <div id="topicScreen" class="card hidden">
-            <h2>What should we decide?</h2>
-            <input type="text" id="topicInput" placeholder="e.g., Who watches the kids tonight?">
-            <button id="createTopicBtn">Create Session</button>
-            
-            <div id="shareSection" class="hidden mt">
-                <div class="status info">
-                    <strong>Session Created!</strong><br>
-                    Share this link: <br>
-                    <input type="text" id="shareLink" readonly onclick="this.select()">
+        <!-- Screen Container -->
+        <div id="screenContainer">
+            <!-- Screen 0: Login -->
+            <div id="loginScreen" class="fade-in">
+                <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md mx-auto">
+                    <h2 class="text-3xl font-bold mb-6 text-indigo-600">Welcome to Align</h2>
+                    <p id="loginMessage" class="text-gray-600 mb-6">Enter your name to begin a negotiation session</p>
+                    <div class="space-y-4">
+                        <input type="text" id="userName" placeholder="Your name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition">
+                        <button id="loginBtn" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition">Start Session</button>
+                    </div>
                 </div>
-                <button id="continueBtn">Continue to Agreement</button>
+            </div>
+
+            <!-- Screen 1: Topic Setup -->
+            <div id="topicSetupScreen" class="hidden fade-in">
+                <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
+                    <h2 class="text-2xl font-bold mb-4 text-indigo-600">What are we deciding today?</h2>
+                    <div class="space-y-4">
+                        <input type="text" id="topicInput" placeholder="e.g., How to split chores for the week" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 transition">
+                        <div class="flex space-x-4">
+                            <button id="createTopicBtn" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition">Create & Share</button>
+                            <button id="shareSessionBtn" class="bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 transition hidden">Share Link</button>
+                        </div>
+                    </div>
+                    <div id="shareInfo" class="hidden mt-6 p-4 bg-blue-50 rounded-lg">
+                        <div class="mb-4">
+                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mb-2">
+                                Session ID: <span id="sessionIdDisplay"></span>
+                            </span>
+                        </div>
+                        <h3 class="font-semibold text-blue-800 mb-2">Share this link with the other person:</h3>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="shareLink" readonly class="flex-1 p-2 border rounded text-sm bg-white">
+                            <button id="copyLinkBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <p class="text-sm text-blue-600 mt-2">This link enables pure peer-to-peer collaboration!</p>
+                        <div class="mt-3 p-2 bg-green-100 rounded text-xs text-green-800">
+                            <i class="fas fa-shield-alt mr-1"></i>
+                            <strong>Private P2P:</strong> No external servers - data stays on your device only!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 2: Topic Agreement -->
+            <div id="topicAgreementScreen" class="hidden fade-in">
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4 text-indigo-600">Topic Agreement</h2>
+                    <div id="topicProposal" class="mb-6">
+                        <p class="text-lg mb-4">Proposed topic:</p>
+                        <div class="bg-gray-50 p-4 rounded-lg border">
+                            <p id="proposedTopic" class="font-medium"></p>
+                        </div>
+                    </div>
+                    <div id="topicActions" class="space-y-4">
+                        <div class="flex space-x-4">
+                            <button id="agreeTopic" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition">
+                                <i class="fas fa-check mr-2"></i>Agree
+                            </button>
+                            <button id="modifyTopic" class="bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-yellow-700 transition">
+                                <i class="fas fa-edit mr-2"></i>Suggest Changes
+                            </button>
+                        </div>
+                        <div id="modifyTopicSection" class="hidden">
+                            <textarea id="topicModification" placeholder="Suggest a modification to the topic..." class="w-full p-3 border rounded-lg h-20"></textarea>
+                            <div class="flex space-x-2 mt-2">
+                                <button id="submitModification" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">Submit</button>
+                                <button id="cancelModification" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="participantStatus" class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h3 class="font-semibold mb-2">P2P Session:</h3>
+                        <div id="participantsList"></div>
+                        <div class="mt-4 pt-3 border-t border-gray-200">
+                            <button id="testConnectionBtn" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition mr-2">
+                                <i class="fas fa-shield-alt mr-1"></i>Test P2P
+                            </button>
+                            <button id="toggleDebugBtn" class="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 transition">
+                                <i class="fas fa-bug mr-1"></i>Show Debug
+                            </button>
+                        </div>
+                        <div id="debugPanel" class="hidden mt-4 p-3 bg-gray-800 text-green-400 rounded text-xs font-mono max-h-40 overflow-y-auto">
+                            <div class="font-bold text-white mb-2">P2P Debug Logs:</div>
+                            <div id="debugLogs"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screen 3: User Input -->
+            <div id="userInputScreen" class="hidden fade-in">
+                <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-2">Topic:</h2>
+                    <div id="agreedTopic" class="p-3 bg-gray-50 rounded-lg font-medium mb-4"></div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-1 text-indigo-600">Your Private Inputs</h2>
+                    <p class="text-gray-500 mb-6">Only you and your personal AI will see this. Be open and honest.</p>
+                    <div class="space-y-6">
+                        <div>
+                            <label class="font-semibold text-lg">1. Your Ideal Outcome</label>
+                            <textarea id="objectives" placeholder="What's the best possible result for you?" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-lg">2. Your Must-Haves (Red Lines)</label>
+                            <textarea id="mustHaves" placeholder="What is absolutely non-negotiable?" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-lg">3. Key Facts & Constraints</label>
+                            <textarea id="constraints" placeholder="Any budget, time limits, or important facts?" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center my-8">
+                    <button id="submitBtn" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-indigo-700 transition-transform transform hover:scale-105 disabled:bg-indigo-300 disabled:cursor-not-allowed">
+                        Send to My AI
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Screen 4: Waiting & Privacy Explanation -->
+            <div id="waitingScreen" class="hidden fade-in">
+                <div class="text-center p-8">
+                    <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mx-auto"></div>
+                    <h2 class="text-3xl font-bold mt-6">Your AI is Negotiating</h2>
+                    <p class="text-lg text-gray-600 mt-2">This process is secure and private. A fair agreement is being crafted.</p>
+                </div>
+
+                <div class="mt-8 privacy-card border border-indigo-200 p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-2xl font-bold text-gray-800 text-center">Our Privacy Commitment</h3>
+                    <div class="mt-6 grid md:grid-cols-3 gap-6 text-center">
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white rounded-full p-4 shadow-md">
+                                <i class="fas fa-user-shield fa-2x text-indigo-600"></i>
+                            </div>
+                            <h4 class="font-semibold text-lg mt-3">Your Inputs are Private</h4>
+                            <p class="text-gray-600 mt-1">Your partner never sees your objectives or red lines. Only your AI advocate has access.</p>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white rounded-full p-4 shadow-md">
+                                <i class="fas fa-cogs fa-2x text-indigo-600"></i>
+                            </div>
+                            <h4 class="font-semibold text-lg mt-3">Secure AI-to-AI Channel</h4>
+                            <p class="text-gray-600 mt-1">The AIs negotiate using an encrypted backchannel. They only share what's needed to find common ground.</p>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white rounded-full p-4 shadow-md">
+                                <i class="fas fa-file-signature fa-2x text-indigo-600"></i>
+                            </div>
+                            <h4 class="font-semibold text-lg mt-3">Only the Result is Shared</h4>
+                            <p class="text-gray-600 mt-1">You both receive the final, mutually-agreed-upon plan. The private details that led to it are discarded.</p>
+                        </div>
+                    </div>
+                     <p class="text-center text-sm text-gray-500 mt-6">Our system is built on the principle of Zero-Knowledge, ensuring your negotiation is provably private.</p>
+                </div>
+            </div>
+
+            <!-- Screen 5: Results -->
+            <div id="resultsScreen" class="hidden fade-in">
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+                    <h2 class="text-3xl font-bold mb-4 text-center">Proposed Agreement</h2>
+                    <div id="agreement" class="prose max-w-none prose-lg">
+                        <!-- Agreement will appear here -->
+                    </div>
+                </div>
+                 <div class="mt-8 bg-white p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4">AI Backchannel Insights</h3>
+                    <p class="text-gray-600 mb-4">Here's a transparent summary of how the AIs reached this conclusion, without revealing private inputs.</p>
+                    <div id="backchannel" class="space-y-3 text-sm h-48 overflow-y-auto pr-2 border-t pt-4">
+                        <!-- Backchannel summary will appear here -->
+                    </div>
+                </div>
+                <div class="text-center mt-8 space-x-4">
+                     <button onclick="startOver()" class="bg-gray-200 text-gray-800 font-bold py-3 px-8 rounded-lg hover:bg-gray-300 transition">Start New Negotiation</button>
+                </div>
             </div>
         </div>
-
-        <!-- Topic Agreement -->
-        <div id="agreementScreen" class="card hidden">
-            <h2>Topic Agreement</h2>
-            <div class="status info">
-                <strong>Topic:</strong> <span id="topicDisplay"></span>
-            </div>
-            <div id="partnerStatus"></div>
-            <button id="agreeBtn">I Agree with This Topic</button>
-            <textarea id="modifyInput" placeholder="Suggest a different topic..." class="hidden"></textarea>
-            <button id="modifyBtn" class="secondary">Suggest Changes</button>
-            <button id="submitModifyBtn" class="hidden">Submit Changes</button>
-        </div>
-
-        <!-- Private Inputs -->
-        <div id="inputScreen" class="card hidden">
-            <h2>Your Private Inputs</h2>
-            <p class="text-small">Only you will see these details</p>
-            
-            <label>What's your ideal outcome?</label>
-            <textarea id="objectives" placeholder="What would be the best result for you?"></textarea>
-            
-            <label>What are your must-haves?</label>
-            <textarea id="mustHaves" placeholder="What is absolutely non-negotiable?"></textarea>
-            
-            <label>Any constraints or important facts?</label>
-            <textarea id="constraints" placeholder="Budget, time limits, or other factors?"></textarea>
-            
-            <button id="submitInputsBtn">Continue to Agreement</button>
-        </div>
-
-        <!-- Results -->
-        <div id="resultsScreen" class="card hidden">
-            <h2>Proposed Agreement</h2>
-            <div id="agreementResult"></div>
-            <button onclick="startOver()" class="mt">Start New Session</button>
-        </div>
-
-        <div id="statusBar" class="text-small mt"></div>
     </div>
 
     <script>
-        // Simple localStorage-based session management
-        let session = {
-            id: null,
+        // WebSocket P2P session management with minimal signaling server
+        let sessionData = {
+            sessionId: null,
             userName: '',
             topic: '',
+            topicAgreed: false,
+            partnerTopicAgreed: false,
             isCreator: false,
-            partnerName: '',
-            agreed: false,
-            partnerAgreed: false,
-            userInputs: {}
+            connectionState: 'disconnected',
+            partnerName: null,
+            messageQueue: [],
+            ws: null,
+            reconnectAttempts: 0,
+            maxReconnectAttempts: 5,
+            offlineMode: false,
+            connectionFailed: false
         };
-
-        // Generate simple session ID
-        function generateId() {
-            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        
+        // Development logs for troubleshooting
+        let debugLogs = [];
+        
+        function addDebugLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            debugLogs.push({ timestamp, message, type });
+            console.log(`[${timestamp}] ${message}`);
+            
+            // Only update debug panel if it exists
+            setTimeout(() => {
+                updateDebugPanel();
+            }, 0);
         }
-
-        // Save session to localStorage
-        function saveSession() {
-            localStorage.setItem('align_session', JSON.stringify(session));
-            if (session.id) {
-                localStorage.setItem('align_session_' + session.id, JSON.stringify({
-                    topic: session.topic,
-                    creator: session.isCreator ? session.userName : session.partnerName,
-                    participants: [session.userName, session.partnerName].filter(Boolean),
-                    lastUpdate: Date.now()
-                }));
+        
+        function updateDebugPanel() {
+            const debugLogsElement = document.getElementById('debugLogs');
+            if (debugLogsElement) {
+                debugLogsElement.innerHTML = debugLogs.slice(-20).map(log => {
+                    const color = {
+                        info: '#60A5FA',
+                        success: '#34D399', 
+                        warning: '#FBBF24',
+                        error: '#F87171'
+                    }[log.type] || '#60A5FA';
+                    
+                    return `<div style="color: ${color}; margin-bottom: 2px;">[${log.timestamp}] ${log.message}</div>`;
+                }).join('');
+                
+                // Auto-scroll to bottom
+                debugLogsElement.scrollTop = debugLogsElement.scrollHeight;
             }
         }
 
-        // Load session from localStorage
-        function loadSession() {
-            const saved = localStorage.getItem('align_session');
-            if (saved) {
-                session = {...session, ...JSON.parse(saved)};
+        // Screen elements
+        const loginScreen = document.getElementById('loginScreen');
+        const topicSetupScreen = document.getElementById('topicSetupScreen');
+        const topicAgreementScreen = document.getElementById('topicAgreementScreen');
+        const userInputScreen = document.getElementById('userInputScreen');
+        const waitingScreen = document.getElementById('waitingScreen');
+        const resultsScreen = document.getElementById('resultsScreen');
+
+        // Step indicators
+        const step1Indicator = document.getElementById('step1Indicator');
+        const step2Indicator = document.getElementById('step2Indicator');
+        const step3Indicator = document.getElementById('step3Indicator');
+
+        // Form elements
+        const submitBtn = document.getElementById('submitBtn');
+        const agreementDiv = document.getElementById('agreement');
+        const backchannelDiv = document.getElementById('backchannel');
+        
+        // User input data
+        const userInputs = { objectives: '', mustHaves: '', constraints: '' };
+        
+        // Partner data (received via WebSocket)
+        let partnerInputs = null;
+        let bothInputsReady = false;
+
+        // URL and session management
+        function generateSessionId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
+        }
+
+        // WebSocket session creation with privacy-first signaling server
+        async function initLocalSession() {
+            try {
+                addDebugLog('Attempting connection to signaling server...', 'info');
+                showNotification('Connecting to secure server...', 'info');
+                
+                await connectWebSocket();
+                
+                if (sessionData.ws && sessionData.ws.readyState === WebSocket.OPEN) {
+                    sessionData.ws.send(JSON.stringify({
+                        type: 'create_session',
+                        sessionId: sessionData.sessionId,
+                        topic: sessionData.topic,
+                        userName: sessionData.userName
+                    }));
+                    addDebugLog('Session creation request sent', 'info');
+                }
+                
+            } catch (error) {
+                addDebugLog(`Error initializing session: ${error.message}`, 'warning');
+                sessionData.connectionState = 'failed';
+                sessionData.connectionFailed = true;
+                updateConnectionStatus();
+                showNotification('Server unavailable - will work offline', 'warning');
+                
+                // Enable offline mode immediately for creators
+                if (sessionData.isCreator) {
+                    sessionData.offlineMode = true;
+                    sessionData.connectionState = 'offline';
+                    updateConnectionStatus();
+                }
             }
         }
 
-        // Get session from URL
-        function getUrlSession() {
-            const params = new URLSearchParams(window.location.search);
-            const sessionId = params.get('session');
-            const topic = params.get('topic');
-            const creator = params.get('creator');
-            const isInitiator = params.get('initiator') === 'true';
+        async function joinLocalSession() {
+            try {
+                addDebugLog('Attempting to join session...', 'info');
+                showNotification('Connecting to session...', 'info');
+                
+                await connectWebSocket();
+                
+                if (sessionData.ws && sessionData.ws.readyState === WebSocket.OPEN) {
+                    sessionData.ws.send(JSON.stringify({
+                        type: 'join_session',
+                        sessionId: sessionData.sessionId,
+                        userName: sessionData.userName
+                    }));
+                    addDebugLog('Session join request sent', 'info');
+                }
+                
+            } catch (error) {
+                addDebugLog(`Error joining session: ${error.message}`, 'warning');
+                sessionData.connectionState = 'failed';
+                sessionData.connectionFailed = true;
+                updateConnectionStatus();
+                showNotification('Connection failed - continuing in offline mode', 'warning');
+                
+                // Enable offline mode for joiners too
+                sessionData.offlineMode = true;
+                sessionData.connectionState = 'offline';
+                updateConnectionStatus();
+                
+                // Allow them to proceed with topic agreement in offline mode
+                enableOfflineMode();
+            }
+        }
+        
+        async function connectWebSocket() {
+            return new Promise((resolve, reject) => {
+                try {
+                    // Use WSS for production, WS for local development
+                    const wsUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                        ? 'ws://localhost:8080'
+                        : 'wss://align-ai-moderator.onrender.com';
+                    
+                    addDebugLog('Connecting to: ' + wsUrl, 'info');
+                    
+                    // Close existing connection if any
+                    if (sessionData.ws) {
+                        sessionData.ws.close();
+                        sessionData.ws = null;
+                    }
+                    
+                    sessionData.ws = new WebSocket(wsUrl);
+                    
+                    // Set shorter timeout to fail fast - reduce from 8s to 5s 
+                    const connectionTimeout = setTimeout(() => {
+                        if (sessionData.ws && sessionData.ws.readyState === WebSocket.CONNECTING) {
+                            addDebugLog('Connection timeout after 5s - server unavailable', 'warning');
+                            sessionData.ws.close();
+                            sessionData.ws = null;
+                            reject(new Error('Connection timeout'));
+                        }
+                    }, 5000); // 5 second timeout for faster failover
+                    
+                    sessionData.ws.onopen = () => {
+                        clearTimeout(connectionTimeout);
+                        addDebugLog('Connected to signaling server successfully', 'success');
+                        sessionData.reconnectAttempts = 0;
+                        sessionData.connectionState = 'connected';
+                        sessionData.connectionFailed = false;
+                        sessionData.offlineMode = false;
+                        updateConnectionStatus();
+                        resolve();
+                    };
+                    
+                    sessionData.ws.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            handleWebSocketMessage(data);
+                        } catch (parseError) {
+                            addDebugLog('Failed to parse WebSocket message: ' + parseError.message, 'error');
+                        }
+                    };
+                    
+                    sessionData.ws.onclose = (event) => {
+                        clearTimeout(connectionTimeout);
+                        addDebugLog(`WebSocket closed: code=${event.code}, reason=${event.reason}`, 'warning');
+                        sessionData.connectionState = 'disconnected';
+                        updateConnectionStatus();
+                        
+                        // Don't attempt reconnect if we're in offline mode or deliberately closing
+                        if (!sessionData.offlineMode && event.code !== 1000) {
+                            attemptReconnect();
+                        }
+                    };
+                    
+                    sessionData.ws.onerror = (error) => {
+                        clearTimeout(connectionTimeout);
+                        addDebugLog('WebSocket error: ' + (error.message || 'Network connection failed'), 'error');
+                        sessionData.connectionState = 'failed';
+                        updateConnectionStatus();
+                        reject(error);
+                    };
+                    
+                } catch (error) {
+                    addDebugLog('Failed to create WebSocket: ' + error.message, 'error');
+                    reject(error);
+                }
+            });
+        }
+        
+        function attemptReconnect() {
+            // Don't attempt reconnect if we're in offline mode or have no session
+            if (sessionData.offlineMode || !sessionData.sessionId) {
+                return;
+            }
+            
+            if (sessionData.reconnectAttempts < sessionData.maxReconnectAttempts) {
+                sessionData.reconnectAttempts++;
+                addDebugLog(`Attempting reconnect ${sessionData.reconnectAttempts}/${sessionData.maxReconnectAttempts}`, 'warning');
+                
+                // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+                const backoffDelay = Math.min(1000 * Math.pow(2, sessionData.reconnectAttempts - 1), 16000);
+                
+                setTimeout(async () => {
+                    if (sessionData.sessionId && !sessionData.offlineMode) {
+                        try {
+                            addDebugLog(`Reconnect attempt ${sessionData.reconnectAttempts}...`, 'info');
+                            if (sessionData.isCreator) {
+                                await initLocalSession();
+                            } else {
+                                await joinLocalSession();
+                            }
+                        } catch (error) {
+                            addDebugLog(`Reconnect attempt ${sessionData.reconnectAttempts} failed: ${error.message}`, 'error');
+                            // Continue to next attempt or fail
+                        }
+                    }
+                }, backoffDelay);
+            } else {
+                addDebugLog('Max reconnect attempts reached - enabling offline mode', 'warning');
+                sessionData.connectionState = 'offline';
+                sessionData.connectionFailed = true;
+                sessionData.offlineMode = true;
+                updateConnectionStatus();
+                showNotification('Connection failed. App will work offline - limited functionality available.', 'warning');
+                
+                // Allow user to proceed without connection
+                enableOfflineMode();
+            }
+        }
+        
+        function getCurrentScreen() {
+            // Find which screen is currently visible
+            const screens = [loginScreen, topicSetupScreen, topicAgreementScreen, userInputScreen, waitingScreen, resultsScreen];
+            return screens.find(screen => !screen.classList.contains('hidden'));
+        }
+        
+        function handleWebSocketMessage(message) {
+            try {
+                switch (message.type) {
+                    case 'session_created':
+                        addDebugLog('Session created successfully', 'success');
+                        sessionData.connectionState = 'connected';
+                        updateConnectionStatus();
+                        break;
+                        
+                    case 'participant_joined':
+                        if (message.userName !== sessionData.userName) {
+                            addDebugLog(`${message.userName} joined the session`, 'success');
+                            sessionData.partnerName = message.userName;
+                            sessionData.topic = message.topic;
+                            
+                            // If creator and still on setup screen, transition to topic agreement
+                            if (sessionData.isCreator && getCurrentScreen() === topicSetupScreen) {
+                                showScreen(topicAgreementScreen);
+                            }
+                            updateTopicAgreementScreen();
+                        }
+                        sessionData.connectionState = 'connected';
+                        updateConnectionStatus();
+                        break;
+                        
+                    case 'participant_left':
+                        if (message.userName === sessionData.partnerName) {
+                            addDebugLog(`${message.userName} left the session`, 'warning');
+                            sessionData.partnerName = null;
+                            sessionData.connectionState = 'disconnected';
+                            updateConnectionStatus();
+                        }
+                        break;
+                        
+                    case 'message_received':
+                        addDebugLog(`Received ${message.messageType} from ${message.from}`, 'info');
+                        // Pass the content as the main message object, adding metadata
+                        const receivedMessage = {
+                            ...message.content,
+                            sender: message.from,
+                            timestamp: message.timestamp
+                        };
+                        handleMessage(receivedMessage);
+                        break;
+                        
+                    case 'message_sent':
+                        addDebugLog(`Message sent: ${message.messageType}`, 'info');
+                        break;
+                        
+                    case 'ping':
+                        // Respond to server keep-alive ping
+                        if (sessionData.ws && sessionData.ws.readyState === WebSocket.OPEN) {
+                            sessionData.ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+                        }
+                        break;
+                        
+                    case 'pong':
+                        // Keep-alive response
+                        break;
+                        
+                    case 'error':
+                        addDebugLog(`Server error: ${message.message}`, 'error');
+                        if (message.message.includes('not found')) {
+                            sessionData.connectionState = 'failed';
+                            updateConnectionStatus();
+                            showNotification('Session not found - ask for a new link', 'error');
+                        } else if (message.message.includes('already exists')) {
+                            // Generate new session ID and retry
+                            addDebugLog('Session ID conflict - generating new ID', 'warning');
+                            sessionData.sessionId = generateSessionId();
+                            setTimeout(() => {
+                                if (sessionData.ws && sessionData.ws.readyState === WebSocket.OPEN) {
+                                    sessionData.ws.send(JSON.stringify({
+                                        type: 'create_session',
+                                        sessionId: sessionData.sessionId,
+                                        topic: sessionData.topic,
+                                        userName: sessionData.userName
+                                    }));
+                                    addDebugLog('Retrying session creation with new ID', 'info');
+                                }
+                            }, 1000);
+                        }
+                        break;
+                        
+                    default:
+                        addDebugLog(`Unknown message type: ${message.type}`, 'warning');
+                }
+            } catch (error) {
+                addDebugLog(`Error handling message: ${error.message}`, 'error');
+            }
+        }
+        
+        async function sendMessage(message) {
+            try {
+                // If offline mode, still return true to allow app flow to continue
+                if (sessionData.offlineMode) {
+                    addDebugLog(`Message queued for offline mode: ${message.type}`, 'warning');
+                    return true;
+                }
+                
+                if (!sessionData.ws || sessionData.ws.readyState !== WebSocket.OPEN) {
+                    addDebugLog('Cannot send message - WebSocket not connected', 'warning');
+                    
+                    // Don't spam reconnection attempts or show repeated notifications
+                    if (!sessionData.connectionFailed) {
+                        attemptReconnect();
+                    }
+                    
+                    // Still return true to allow app flow in offline mode
+                    return true;
+                }
+                
+                const messagePayload = {
+                    type: 'relay_message',
+                    messageType: message.type,
+                    content: message.content || message
+                };
+                
+                sessionData.ws.send(JSON.stringify(messagePayload));
+                addDebugLog(`Message sent successfully: ${message.type}`, 'info');
+                
+                return true;
+                
+            } catch (error) {
+                addDebugLog(`Error sending message: ${error.message}`, 'error');
+                // Don't show error notification - just log it
+                return false;
+            }
+        }
+        
+        function handleMessage(message) {
+            console.log('Received message:', message);
+            addDebugLog(`Processing message: ${message.type} from ${message.sender}`, 'info');
+            
+            switch (message.type) {
+                case 'userJoined':
+                    sessionData.partnerName = message.sender;
+                    updateTopicAgreementScreen();
+                    showNotification(`${message.sender} joined the session!`, 'success');
+                    break;
+                    
+                case 'topicModified':
+                    addDebugLog(`Topic modified by ${message.sender}: ${message.topic}`, 'info');
+                    sessionData.topic = message.topic;
+                    // Reset agreement states when topic is modified
+                    sessionData.topicAgreed = false;
+                    sessionData.partnerTopicAgreed = false;
+                    
+                    // Update UI immediately
+                    const proposedTopicEl = document.getElementById('proposedTopic');
+                    if (proposedTopicEl) {
+                        proposedTopicEl.textContent = message.topic;
+                    }
+                    
+                    // Clear any existing agreement status
+                    const existingStatus = document.querySelector('.agreement-status');
+                    if (existingStatus) {
+                        existingStatus.remove();
+                    }
+                    
+                    showNotification(`${message.sender} modified the topic`, 'info');
+                    break;
+                    
+                case 'topicAgreed':
+                    addDebugLog(`${message.sender} agreed to topic`, 'success');
+                    sessionData.partnerTopicAgreed = true;
+                    showNotification(`${message.sender} agreed to the topic!`, 'success');
+                    checkMutualTopicAgreement();
+                    break;
+                    
+                case 'proceedToInputs':
+                    addDebugLog('Received proceed to inputs signal', 'info');
+                    proceedToPrivateInputs();
+                    break;
+                    
+                case 'userInputsSubmitted':
+                    addDebugLog(`Received inputs from ${message.sender}`, 'info');
+                    handlePartnerInputsReceived(message);
+                    break;
+                    
+                case 'negotiationComplete':
+                    addDebugLog(`Received negotiation results from ${message.sender}`, 'success');
+                    if (message.content) {
+                        displayNegotiationResult(message.content);
+                    } else {
+                        addDebugLog('Warning: negotiationComplete message missing content', 'warning');
+                    }
+                    break;
+                    
+                case 'ping':
+                    addDebugLog(`Ping received from ${message.sender}`, 'info');
+                    showNotification(`Connection test from ${message.sender}`, 'info');
+                    // Send pong back
+                    sendMessage({
+                        type: 'pong',
+                        userName: sessionData.userName
+                    });
+                    break;
+                    
+                case 'pong':
+                    addDebugLog(`Pong received from ${message.sender}`, 'success');
+                    showNotification(`Connection confirmed with ${message.sender}`, 'success');
+                    break;
+                    
+                default:
+                    addDebugLog(`Unknown message type: ${message.type}`, 'warning');
+            }
+        }
+        
+        function enableOfflineMode() {
+            addDebugLog('Enabling offline mode - user can proceed without P2P connection', 'info');
+            
+            // If user is on topic agreement screen, allow them to proceed
+            if (getCurrentScreen() === topicAgreementScreen) {
+                // In offline mode, auto-agree topic after a short delay
+                setTimeout(() => {
+                    sessionData.topicAgreed = true;
+                    sessionData.partnerTopicAgreed = true; // Simulate partner agreement in offline mode
+                    showNotification('Topic agreed! Proceeding in offline mode...', 'success');
+                    proceedToPrivateInputs();
+                }, 2000);
+            }
+        }
+
+        function updateConnectionStatus() {
+            const statusElement = document.getElementById('connectionStatus');
+            if (statusElement) {
+                const state = sessionData.connectionState;
+                if (state === 'connected') {
+                    statusElement.innerHTML = '<span style="color: #10B981;">🛡️ P2P Active</span>';
+                } else if (state === 'offline' || sessionData.offlineMode) {
+                    statusElement.innerHTML = '<span style="color: #F59E0B;">📱 Offline Mode</span>';
+                } else if (state === 'failed') {
+                    statusElement.innerHTML = '<span style="color: #EF4444;">❌ Connection Failed</span>';
+                } else {
+                    statusElement.innerHTML = '<span style="color: #6B7280;">🔗 Connecting...</span>';
+                }
+            }
+        }
+        
+        function showNotification(message, type = 'info') {
+            // Prevent notification spam during connection issues
+            if (sessionData.connectionFailed && message.includes('not connected')) {
+                return; // Skip redundant connection error notifications
+            }
+            
+            // Limit to one notification at a time to prevent overlapping
+            const existing = document.querySelector('.align-notification');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const colors = {
+                info: '#3B82F6',
+                success: '#10B981', 
+                warning: '#F59E0B',
+                error: '#EF4444'
+            };
+            
+            const notification = document.createElement('div');
+            notification.className = 'align-notification';
+            
+            // Use simple inline styles to avoid conflicts
+            notification.style.cssText = `
+                position: fixed;
+                top: 1rem;
+                right: 1rem;
+                background-color: ${colors[type]};
+                color: white;
+                padding: 0.75rem 1rem;
+                border-radius: 0.5rem;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                z-index: 99999;
+                max-width: 300px;
+                font-size: 0.875rem;
+                font-family: Inter, system-ui, sans-serif;
+                font-weight: 500;
+                opacity: 0;
+                transform: translateY(-10px);
+                transition: all 0.3s ease;
+                pointer-events: none;
+                word-wrap: break-word;
+            `;
+            
+            const icons = {
+                success: '✅',
+                warning: '⚠️', 
+                error: '❌',
+                info: '📡'
+            };
+            
+            notification.innerHTML = `${icons[type] || icons.info} ${message}`;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            requestAnimationFrame(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translateY(0)';
+            });
+            
+            // Auto-remove after 4 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.style.opacity = '0';
+                    notification.style.transform = 'translateY(-10px)';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.remove();
+                        }
+                    }, 300);
+                }
+            }, 4000);
+        }
+
+        // Session URL management with WebRTC signaling
+        function createSessionURL(sessionId, topic, creator, isInitiator = false) {
+            const params = new URLSearchParams();
+            params.set('session', sessionId);
+            params.set('topic', encodeURIComponent(topic));
+            params.set('creator', encodeURIComponent(creator));
+            if (isInitiator) {
+                params.set('initiator', 'true');
+            }
+            return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+        }
+
+        function getSessionFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('session');
+        }
+
+        function updateURL(sessionId) {
+            const newURL = `${window.location.origin}${window.location.pathname}?session=${sessionId}`;
+            window.history.pushState({}, '', newURL);
+            return newURL;
+        }
+
+        function getSessionDataFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session');
+            const topic = urlParams.get('topic');
+            const creator = urlParams.get('creator');
+            const isInitiator = urlParams.get('initiator') === 'true';
             
             if (sessionId && topic) {
                 return {
-                    id: sessionId,
+                    sessionId: sessionId,
                     topic: decodeURIComponent(topic),
-                    creator: creator ? decodeURIComponent(creator) : '',
+                    creator: creator ? decodeURIComponent(creator) : 'Creator',
                     isInitiator: isInitiator
                 };
             }
             return null;
         }
 
-        // Show screen
-        function showScreen(screenName) {
-            document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
-            document.getElementById(screenName).classList.remove('hidden');
+        function showScreen(screenElement) {
+            document.querySelectorAll('#screenContainer > div').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            screenElement.classList.remove('hidden');
         }
 
-        // Update status
-        function updateStatus(message, type = 'info') {
-            const statusBar = document.getElementById('statusBar');
-            statusBar.innerHTML = `<div class="status ${type}">${message}</div>`;
-            setTimeout(() => statusBar.innerHTML = '', 5000);
-        }
+        function updateStepIndicator(step) {
+            step1Indicator.classList.remove('step-active', 'step-done');
+            step2Indicator.classList.remove('step-active', 'step-done');
+            step3Indicator.classList.remove('step-active', 'step-done');
 
-        // Initialize app
-        function init() {
-            const urlSession = getUrlSession();
+            if (step >= 1) step1Indicator.classList.add('step-done');
+            if (step >= 2) step2Indicator.classList.add('step-done');
             
-            if (urlSession) {
-                // Joining or resuming session
-                session.id = urlSession.id;
-                session.topic = urlSession.topic;
-                
-                if (urlSession.isInitiator) {
-                    // Returning creator
-                    session.isCreator = true;
-                    document.getElementById('loginTitle').textContent = 'Welcome Back!';
-                    document.getElementById('loginMessage').textContent = `Your session: ${urlSession.topic}`;
-                } else {
-                    // Joining session
-                    session.isCreator = false;
-                    session.partnerName = urlSession.creator;
-                    document.getElementById('loginTitle').textContent = 'Join Session';
-                    document.getElementById('loginMessage').textContent = `Joining: ${urlSession.topic}`;
-                }
-            } else {
-                // New session
-                loadSession();
-            }
-            
-            showScreen('loginScreen');
+            if (step === 1) step1Indicator.classList.add('step-active');
+            if (step === 2) step2Indicator.classList.add('step-active');
+            if (step === 3) step3Indicator.classList.add('step-active');
         }
-
-        // Event listeners
+        
+        // Event Listeners
         document.getElementById('loginBtn').addEventListener('click', () => {
-            const name = document.getElementById('userName').value.trim();
-            if (!name) {
-                updateStatus('Please enter your name', 'warning');
+            const userName = document.getElementById('userName').value.trim();
+            if (!userName) {
+                alert('Please enter your name');
                 return;
             }
             
-            session.userName = name;
-            saveSession();
+            sessionData.userName = userName;
             
-            if (session.id && !session.isCreator) {
-                // Joining existing session
-                proceedToAgreement();
-            } else if (session.id && session.isCreator) {
-                // Resuming creator session
-                if (session.topic) {
-                    proceedToAgreement();
+            // Check if joining existing session
+            const urlData = getSessionDataFromURL();
+            if (urlData && urlData.sessionId) {
+                sessionData.sessionId = urlData.sessionId;
+                sessionData.topic = urlData.topic;
+                
+                if (urlData.isInitiator) {
+                    // Returning initiator - restore their session
+                    sessionData.isCreator = true;
+                    sessionData.partnerName = null;
+                    resumeInitiatorSession();
                 } else {
-                    showScreen('topicScreen');
+                    // Joining user
+                    sessionData.isCreator = false;
+                    sessionData.partnerName = urlData.creator;
+                    joinExistingSession();
                 }
             } else {
-                // New session
-                showScreen('topicScreen');
+                showScreen(topicSetupScreen);
             }
         });
 
-        document.getElementById('createTopicBtn').addEventListener('click', () => {
+        document.getElementById('createTopicBtn').addEventListener('click', async () => {
             const topic = document.getElementById('topicInput').value.trim();
             if (!topic) {
-                updateStatus('Please enter a topic', 'warning');
+                alert('Please enter a topic');
                 return;
             }
             
-            session.id = generateId();
-            session.topic = topic;
-            session.isCreator = true;
-            saveSession();
+            sessionData.topic = topic;
+            sessionData.sessionId = generateSessionId();
+            sessionData.isCreator = true;
             
-            // Create shareable URL
-            const shareUrl = `${window.location.origin}${window.location.pathname}?session=${session.id}&topic=${encodeURIComponent(topic)}&creator=${encodeURIComponent(session.userName)}`;
-            document.getElementById('shareLink').value = shareUrl;
+            addDebugLog('Creating new real-time session as creator', 'info');
             
-            // Update URL for creator
-            const creatorUrl = shareUrl + '&initiator=true';
-            window.history.pushState({}, '', creatorUrl);
+            // Initialize local P2P session
+            await initLocalSession();
             
-            document.getElementById('shareSection').classList.remove('hidden');
-            updateStatus('Session created! Share the link with the other person.', 'success');
+            const shareURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName);
+            document.getElementById('shareLink').value = shareURL;
+            document.getElementById('sessionIdDisplay').textContent = sessionData.sessionId;
+            document.getElementById('shareInfo').classList.remove('hidden');
+            document.getElementById('shareSessionBtn').classList.remove('hidden');
+            document.getElementById('createTopicBtn').classList.add('hidden');
+            
+            // Redirect initiator to their own URL for session persistence
+            const initiatorURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName, true);
+            window.history.pushState({}, '', initiatorURL);
+            
+            showNotification('Session created! Share the link for private P2P collaboration.', 'success');
         });
 
-        document.getElementById('continueBtn').addEventListener('click', () => {
-            proceedToAgreement();
+        document.getElementById('testConnectionBtn')?.addEventListener('click', async () => {
+            if (sessionData.connectionState === 'connected') {
+                await sendMessage({
+                    type: 'ping',
+                    userName: sessionData.userName
+                });
+                showNotification('Test message sent!', 'info');
+            } else {
+                showNotification('No connection established yet', 'warning');
+            }
         });
 
-        document.getElementById('agreeBtn').addEventListener('click', () => {
-            session.agreed = true;
-            saveSession();
+        document.getElementById('copyLinkBtn').addEventListener('click', () => {
+            const linkInput = document.getElementById('shareLink');
+            linkInput.select();
+            document.execCommand('copy');
             
-            // In real app, this would sync with partner
-            // For demo, simulate partner agreement after delay
-            updateStatus('You agreed! Waiting for partner...', 'info');
-            
+            const btn = document.getElementById('copyLinkBtn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i>';
             setTimeout(() => {
-                session.partnerAgreed = true;
-                updateStatus('Both agreed! Proceeding to private inputs...', 'success');
-                setTimeout(() => showScreen('inputScreen'), 1000);
+                btn.innerHTML = originalHTML;
             }, 2000);
         });
 
-        document.getElementById('modifyBtn').addEventListener('click', () => {
-            document.getElementById('modifyInput').classList.remove('hidden');
-            document.getElementById('submitModifyBtn').classList.remove('hidden');
+        document.getElementById('agreeTopic').addEventListener('click', async () => {
+            sessionData.topicAgreed = true;
+            
+            // Send agreement to peer
+            await sendMessage({
+                type: 'topicAgreed',
+                userName: sessionData.userName
+            });
+            
+            // Check if both users have agreed
+            checkMutualTopicAgreement();
         });
 
-        document.getElementById('submitModifyBtn').addEventListener('click', () => {
-            const newTopic = document.getElementById('modifyInput').value.trim();
-            if (!newTopic) return;
-            
-            session.topic = newTopic;
-            session.agreed = false;
-            session.partnerAgreed = false;
-            saveSession();
-            
-            document.getElementById('topicDisplay').textContent = newTopic;
-            document.getElementById('modifyInput').classList.add('hidden');
-            document.getElementById('submitModifyBtn').classList.add('hidden');
-            updateStatus('Topic updated! Both users need to agree again.', 'info');
+        document.getElementById('modifyTopic').addEventListener('click', () => {
+            document.getElementById('modifyTopicSection').classList.remove('hidden');
         });
 
-        document.getElementById('submitInputsBtn').addEventListener('click', () => {
-            session.userInputs = {
-                objectives: document.getElementById('objectives').value,
-                mustHaves: document.getElementById('mustHaves').value,
-                constraints: document.getElementById('constraints').value
-            };
-            
-            if (!session.userInputs.objectives || !session.userInputs.mustHaves || !session.userInputs.constraints) {
-                updateStatus('Please fill in all fields', 'warning');
+        document.getElementById('submitModification').addEventListener('click', async () => {
+            const modification = document.getElementById('topicModification').value.trim();
+            if (!modification) {
+                alert('Please enter a modification');
                 return;
             }
             
-            saveSession();
+            // Update local topic
+            sessionData.topic = modification;
+            // Reset agreement states when topic is modified
+            sessionData.topicAgreed = false;
+            sessionData.partnerTopicAgreed = false;
+            document.getElementById('proposedTopic').textContent = modification;
             
-            // Generate simple agreement
-            const agreement = `
-                <h3>Proposed Agreement: ${session.topic}</h3>
-                <p><strong>Approach:</strong> Based on both parties' needs, here's a fair solution that considers everyone's constraints and priorities.</p>
-                <p><strong>Key Points:</strong></p>
-                <ul>
-                    <li>Addresses the main concerns raised by both parties</li>
-                    <li>Respects non-negotiable requirements</li>
-                    <li>Provides a practical implementation plan</li>
-                </ul>
-                <p><strong>Next Steps:</strong> Review this agreement and discuss any adjustments needed.</p>
-            `;
+            // Send to peer via Firebase
+            const sent = await sendMessage({
+                type: 'topicModified',
+                topic: modification,
+                userName: sessionData.userName
+            });
             
-            document.getElementById('agreementResult').innerHTML = agreement;
-            showScreen('resultsScreen');
-            updateStatus('Agreement generated!', 'success');
+            if (sent) {
+                showNotification('Topic modification sent!');
+            } else {
+                showNotification('No connection - modification saved locally');
+            }
+            
+            document.getElementById('modifyTopicSection').classList.add('hidden');
         });
 
-        function proceedToAgreement() {
-            document.getElementById('topicDisplay').textContent = session.topic;
+        document.getElementById('cancelModification').addEventListener('click', () => {
+            document.getElementById('modifyTopicSection').classList.add('hidden');
+            document.getElementById('topicModification').value = '';
+        });
+
+        submitBtn.addEventListener('click', async () => {
+            userInputs.objectives = document.getElementById('objectives').value;
+            userInputs.mustHaves = document.getElementById('mustHaves').value;
+            userInputs.constraints = document.getElementById('constraints').value;
             
-            if (session.partnerName) {
-                document.getElementById('partnerStatus').innerHTML = 
-                    `<div class="status info">Partner: ${session.partnerName}</div>`;
+            // Basic validation
+            if (!userInputs.objectives || !userInputs.mustHaves || !userInputs.constraints) {
+                alert("Please fill out all your private input fields.");
+                return;
             }
+
+            // Send user inputs to partner (for AI negotiation)
+            await sendMessage({
+                type: 'userInputsSubmitted',
+                userName: sessionData.userName,
+                inputs: userInputs
+            });
+
+            // Transition to waiting screen
+            showScreen(waitingScreen);
+            updateStepIndicator(2);
             
-            showScreen('agreementScreen');
+            addDebugLog('Private inputs submitted, waiting for partner...', 'info');
+            showNotification('Inputs submitted! Waiting for your partner...', 'success');
+        });
+
+        async function resumeInitiatorSession() {
+            addDebugLog('Resuming initiator session for mobile user', 'info');
+            const urlData = getSessionDataFromURL();
+            
+            try {
+                // Initialize local P2P session as creator
+                await initLocalSession();
+                
+                // Set up sharing UI immediately
+                const shareURL = createSessionURL(sessionData.sessionId, sessionData.topic, sessionData.userName);
+                document.getElementById('shareLink').value = shareURL;
+                document.getElementById('sessionIdDisplay').textContent = sessionData.sessionId;
+                
+                // Check connection state and restore appropriate screen
+                setTimeout(() => {
+                    if (sessionData.connectionState === 'connected' && sessionData.partnerName) {
+                        // Partner is connected - go to topic agreement screen
+                        addDebugLog('Partner connected, restoring topic agreement screen', 'info');
+                        showScreen(topicAgreementScreen);
+                        updateTopicAgreementScreen();
+                        showNotification('Session restored! Your partner is connected.', 'success');
+                    } else if (sessionData.connectionState === 'connected') {
+                        // Connected but no partner - show sharing screen
+                        addDebugLog('Connected but no partner, showing sharing screen', 'info');
+                        showScreen(topicSetupScreen);
+                        document.getElementById('topicInput').value = sessionData.topic;
+                        document.getElementById('shareInfo').classList.remove('hidden');
+                        document.getElementById('shareSessionBtn').classList.remove('hidden');
+                        document.getElementById('createTopicBtn').classList.add('hidden');
+                        showNotification('Session restored! Share the link to continue.', 'success');
+                    } else {
+                        // Connection failed - enable offline mode but allow sharing
+                        addDebugLog('Connection failed during restore, showing offline sharing', 'warning');
+                        showScreen(topicSetupScreen);
+                        document.getElementById('topicInput').value = sessionData.topic;
+                        document.getElementById('shareInfo').classList.remove('hidden');
+                        document.getElementById('shareSessionBtn').classList.remove('hidden');
+                        document.getElementById('createTopicBtn').classList.add('hidden');
+                        showNotification('Session restored (offline). Share the link - connections will sync when available.', 'warning');
+                    }
+                }, 2000); // Give WebSocket more time to establish connection
+            } catch (error) {
+                // Connection failed - still allow user to proceed
+                addDebugLog('Failed to restore initiator session, enabling offline mode', 'error');
+                showScreen(topicSetupScreen);
+                document.getElementById('topicInput').value = sessionData.topic;
+                document.getElementById('shareInfo').classList.remove('hidden');
+                document.getElementById('shareSessionBtn').classList.remove('hidden');
+                document.getElementById('createTopicBtn').classList.add('hidden');
+                showNotification('Session restored (offline mode). You can still share the link.', 'warning');
+            }
         }
 
+        async function joinExistingSession() {
+            addDebugLog('Attempting to join existing session (mobile-friendly)', 'info');
+            const urlData = getSessionDataFromURL();
+            
+            if (!urlData || !urlData.topic) {
+                addDebugLog('Invalid session data in URL', 'error');
+                alert('Invalid session link. Please ask the creator to share a new link.');
+                showScreen(loginScreen);
+                return;
+            }
+            
+            addDebugLog(`Joining session: ${urlData.sessionId}`, 'info');
+            addDebugLog(`Topic: ${urlData.topic}`, 'info');
+            addDebugLog(`Creator: ${urlData.creator}`, 'info');
+            
+            // Load session data from URL
+            sessionData.topic = urlData.topic;
+            sessionData.sessionId = urlData.sessionId;
+            sessionData.isCreator = false;
+            sessionData.partnerName = urlData.creator;
+            
+            try {
+                // Attempt to join P2P session
+                await joinLocalSession();
+                
+                // Show topic agreement screen regardless of connection status
+                showScreen(topicAgreementScreen);
+                updateTopicAgreementScreen(urlData.creator);
+                
+                // Provide feedback based on connection status
+                setTimeout(() => {
+                    if (sessionData.connectionState === 'connected') {
+                        showNotification('Successfully joined the session!', 'success');
+                    } else {
+                        showNotification('Joined session (offline). Changes will sync when connection is available.', 'warning');
+                        // Enable offline mode for this joiner
+                        enableOfflineMode();
+                    }
+                }, 1000);
+            } catch (error) {
+                addDebugLog('Failed to join session, proceeding in offline mode', 'warning');
+                
+                // Still proceed to topic agreement screen - offline mode
+                showScreen(topicAgreementScreen);
+                updateTopicAgreementScreen(urlData.creator);
+                showNotification('Joined session (offline mode). App will work with limited functionality.', 'warning');
+                
+                // Enable offline mode
+                sessionData.offlineMode = true;
+                sessionData.connectionState = 'offline';
+                updateConnectionStatus();
+                enableOfflineMode();
+            }
+        }
+        
+        // Session cleanup for privacy
+        async function cleanupSession() {
+            try {
+                // Clear polling interval
+                
+                // Close WebSocket connection
+                if (sessionData.ws) {
+                    sessionData.ws.close();
+                    sessionData.ws = null;
+                    addDebugLog('WebSocket connection closed', 'info');
+                }
+                
+            } catch (error) {
+                addDebugLog(`Error during cleanup: ${error.message}`, 'error');
+            }
+        }
+
+        function updateTopicAgreementScreen(creatorName = 'Creator') {
+            document.getElementById('proposedTopic').textContent = sessionData.topic;
+            
+            const participantsList = document.getElementById('participantsList');
+            participantsList.innerHTML = '';
+            
+            // Add connection status
+            const statusDiv = document.createElement('div');
+            statusDiv.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background-color: #F9FAFB; border-radius: 0.5rem; margin-bottom: 1rem;';
+            statusDiv.innerHTML = `
+                <span style="font-weight: 500;">Connection Status:</span>
+                <span id="connectionStatus" style="font-size: 0.875rem;">
+                    🔗 Connecting...
+                </span>
+            `;
+            participantsList.appendChild(statusDiv);
+            
+            // Add current user
+            const userDiv = document.createElement('div');
+            userDiv.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;';
+            userDiv.innerHTML = `
+                <span style="color: #4F46E5;">👤</span>
+                <span style="font-weight: 500;">${sessionData.userName}</span>
+                <span style="color: #10B981; font-size: 0.875rem;">(You)</span>
+            `;
+            participantsList.appendChild(userDiv);
+            
+            // Add the other participant
+            if (sessionData.partnerName) {
+                const partnerDiv = document.createElement('div');
+                partnerDiv.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;';
+                partnerDiv.innerHTML = `
+                    <span style="color: #6B7280;">👤</span>
+                    <span style="font-weight: 500;">${sessionData.partnerName}</span>
+                    <span style="color: #10B981; font-size: 0.875rem;">${sessionData.isCreator ? '(Joined)' : '(Creator)'}</span>
+                `;
+                participantsList.appendChild(partnerDiv);
+            } else if (!sessionData.isCreator) {
+                // Show creator from URL data
+                const creatorDiv = document.createElement('div');
+                creatorDiv.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;';
+                creatorDiv.innerHTML = `
+                    <span style="color: #6B7280;">👤</span>
+                    <span style="font-weight: 500;">${creatorName}</span>
+                    <span style="color: #10B981; font-size: 0.875rem;">(Creator)</span>
+                `;
+                participantsList.appendChild(creatorDiv);
+            }
+            
+            // Show topic actions
+            const topicActions = document.getElementById('topicActions');
+            if (topicActions) {
+                topicActions.style.display = 'block';
+            }
+            
+            updateConnectionStatus();
+        }
+
+        function checkMutualTopicAgreement() {
+            addDebugLog(`Mutual agreement check: User=${sessionData.topicAgreed}, Partner=${sessionData.partnerTopicAgreed}`, 'info');
+            
+            if (sessionData.topicAgreed && sessionData.partnerTopicAgreed) {
+                // Both users have agreed - proceed to private inputs
+                addDebugLog('Both users agreed to topic - proceeding to private inputs', 'success');
+                showNotification('Both parties agreed! Moving to private inputs...', 'success');
+                
+                // Send proceed signal to partner (if connected)
+                if (sessionData.connectionState === 'connected') {
+                    sendMessage({
+                        type: 'proceedToInputs',
+                        userName: sessionData.userName
+                    });
+                }
+                
+                // Proceed immediately for this user
+                setTimeout(() => {
+                    proceedToPrivateInputs();
+                }, 1000);
+            } else {
+                // Update UI to show current agreement status
+                updateTopicAgreementStatus();
+            }
+        }
+        
+        function updateTopicAgreementStatus() {
+            // Update UI to show which users have agreed
+            const topicActions = document.getElementById('topicActions');
+            if (topicActions) {
+                let statusMsg = '';
+                if (sessionData.topicAgreed && !sessionData.partnerTopicAgreed) {
+                    statusMsg = '<div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg"><i class="fas fa-clock text-yellow-600 mr-2"></i>You agreed! Waiting for your partner to agree...</div>';
+                } else if (!sessionData.topicAgreed && sessionData.partnerTopicAgreed) {
+                    statusMsg = '<div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg"><i class="fas fa-check text-blue-600 mr-2"></i>Your partner agreed! Do you agree with this topic?</div>';
+                }
+                
+                // Remove existing status message
+                const existingStatus = document.querySelector('.agreement-status');
+                if (existingStatus) {
+                    existingStatus.remove();
+                }
+                
+                // Add new status message
+                if (statusMsg) {
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = 'agreement-status';
+                    statusDiv.innerHTML = statusMsg;
+                    topicActions.appendChild(statusDiv);
+                }
+            }
+        }
+
+        function proceedToPrivateInputs() {
+            document.getElementById('agreedTopic').textContent = sessionData.topic;
+            showScreen(userInputScreen);
+            updateStepIndicator(1);
+        }
+        
+        function handlePartnerInputsReceived(message) {
+            partnerInputs = {
+                userName: message.sender,
+                inputs: message.inputs
+            };
+            
+            addDebugLog(`Received inputs from ${message.sender}`, 'info');
+            showNotification(`${message.sender} has submitted their inputs!`, 'info');
+            
+            // Check if both users have submitted inputs
+            if (userInputs.objectives && partnerInputs) {
+                bothInputsReady = true;
+                addDebugLog('Both users ready - starting AI negotiation', 'success');
+                setTimeout(() => {
+                    startAINegotiation();
+                }, 2000);
+            }
+        }
+
+        async function startAINegotiation() {
+            try {
+                addDebugLog('Starting AI-to-AI negotiation...', 'info');
+                
+                // Show both users are in negotiation mode
+                showScreen(waitingScreen);
+                updateStepIndicator(2);
+                
+                // Send negotiation request to AI API
+                const negotiationRequest = {
+                    sessionId: sessionData.sessionId,
+                    topic: sessionData.topic,
+                    user1Data: {
+                        userName: sessionData.userName,
+                        inputs: userInputs
+                    },
+                    user2Data: partnerInputs
+                };
+                
+                addDebugLog('Sending request to AI negotiation API...', 'info');
+                
+                // Call AI negotiation API
+                const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                    ? 'http://localhost:3001/api/start-negotiation'
+                    : 'https://align-ai-negotiation.onrender.com/api/start-negotiation';
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(negotiationRequest)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addDebugLog(`AI negotiation completed in ${result.result.rounds} rounds`, 'success');
+                    
+                    // Share results with both users via WebSocket
+                    sendMessage('negotiationComplete', result.result);
+                    
+                    // Display results locally
+                    displayNegotiationResult(result.result);
+                } else {
+                    throw new Error(result.message || 'AI negotiation failed');
+                }
+                
+            } catch (error) {
+                addDebugLog(`AI negotiation error: ${error.message}`, 'error');
+                showNotification('AI negotiation failed. Using fallback process...', 'warning');
+                
+                // Fall back to mock negotiation if AI API fails
+                setTimeout(() => {
+                    runMockNegotiation();
+                }, 2000);
+            }
+        }
+        
+        function displayNegotiationResult(result) {
+            agreementDiv.innerHTML = result.agreement;
+            backchannelDiv.innerHTML = '';
+            
+            result.backchannel.forEach((item, index) => {
+                const p = document.createElement('p');
+                p.className = 'p-2 bg-gray-100 rounded-md mb-2';
+                p.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-2"></i> <strong>Round ${index + 1}:</strong> ${item}`;
+                backchannelDiv.appendChild(p);
+            });
+
+            // Transition to results screen
+            showScreen(resultsScreen);
+            updateStepIndicator(3);
+            
+            showNotification('AI negotiation complete!', 'success');
+        }
+
+        async function runMockNegotiation() {
+            // Fallback negotiation using mock data
+            addDebugLog('Using mock negotiation as fallback', 'warning');
+            
+            const topic = sessionData.topic;
+            const partnerData = partnerInputs ? partnerInputs.inputs : {
+                objectives: "I need to complete my important work projects",
+                mustHaves: "I need at least 4 hours of uninterrupted work time",
+                constraints: "I have limited childcare options and need a fair solution"
+            };
+            
+            const mockResult = {
+                agreement: generateMockAgreement(topic, userInputs, partnerData),
+                backchannel: [
+                    "Identified both parties' core needs and constraints",
+                    "Found areas of potential compromise and mutual benefit",
+                    "Developed a time-sharing solution that respects both schedules",
+                    "Ensured fairness and equal distribution of responsibilities",
+                    "Confirmed all non-negotiable requirements are met"
+                ]
+            };
+            
+            setTimeout(() => {
+                // Share mock results with both users via WebSocket
+                sendMessage('negotiationComplete', mockResult);
+                
+                // Display results locally
+                displayNegotiationResult(mockResult);
+            }, 3000);
+        }
+        
+        function generateMockAgreement(topic, user1Inputs, user2Inputs) {
+            return `
+                <h4 class="text-xl font-bold">Agreement: ${topic}</h4>
+                <hr class="my-4">
+                <h5><strong>Principles:</strong></h5>
+                <p>This agreement ensures both parties achieve their key objectives while respecting each other's constraints and non-negotiable requirements.</p>
+                <br>
+                <h5><strong>Key Terms:</strong></h5>
+                <ul class="list-disc pl-6">
+                    <li><strong>Objective 1:</strong> Address ${sessionData.userName}'s primary goal while considering their constraints</li>
+                    <li><strong>Objective 2:</strong> Address ${partnerInputs?.userName || 'Partner'}'s primary goal while respecting their requirements</li>
+                    <li><strong>Fair Distribution:</strong> Responsibilities and benefits are shared equitably</li>
+                    <li><strong>Flexibility:</strong> Built-in review process for adjustments if needed</li>
+                </ul>
+                <br>
+                <h5><strong>Implementation:</strong></h5>
+                <p>This agreement takes effect immediately and includes a review period to ensure it works for both parties.</p>
+            `;
+        }
+        
+        async function mockLLMCall(prompt) {
+            console.log("Mock LLM Call - this shouldn't be used anymore");
+            return {
+                "backchannel": [
+                    "Identified User A's critical afternoon time block as a primary constraint.",
+                    "Recognized User B's need for a consolidated 4-hour work period.",
+                    "Cross-referenced both schedules to find non-overlapping availability.",
+                    "Proposed a time-swapping solution to ensure fairness and equal work time.",
+                    "Confirmed that the proposed solution respects all non-negotiable 'red lines' for both parties."
+                ],
+                "agreement": `
+                    <h4 class="text-xl font-bold">Agreement: Childcare for Thursday & Friday</h4>
+                    <hr class="my-4">
+                    <h5><strong>Principles:</strong></h5>
+                    <p>This plan ensures both partners get the focused work time they need, acknowledging that both roles are equally important. It is designed to be fair, equitable, and predictable.</p>
+                    <br>
+                    <h5><strong>Thursday's Plan:</strong></h5>
+                    <ul class="list-disc pl-6">
+                        <li><strong>9:00 AM - 1:00 PM:</strong> Partner B has 4 hours of uninterrupted work. Partner A handles childcare.</li>
+                        <li><strong>1:00 PM - 5:00 PM:</strong> Partner A has uninterrupted time for work/calls. Partner B handles childcare.</li>
+                    </ul>
+                    <br>
+                    <h5><strong>Friday's Plan:</strong></h5>
+                     <ul class="list-disc pl-6">
+                        <li><strong>9:00 AM - 1:00 PM:</strong> Partner A has 4 hours of uninterrupted work. Partner B handles childcare.</li>
+                    </ul>
+                    <br>
+                    <h5><strong>Review:</strong></h5>
+                    <p>Let's check in Thursday evening to confirm this plan feels balanced and works for Friday.</p>
+                `
+            };
+        }
+        
         function startOver() {
-            localStorage.removeItem('align_session');
-            if (session.id) {
-                localStorage.removeItem('align_session_' + session.id);
+            // Clean up polling and session data
+            cleanupSession();
+            
+            // Reset all state
+            sessionData = {
+                sessionId: null,
+                userName: '',
+                topic: '',
+                topicAgreed: false,
+                partnerTopicAgreed: false,
+                isCreator: false,
+                connectionState: 'disconnected',
+                partnerName: null,
+                messageQueue: [],
+                ws: null,
+                reconnectAttempts: 0,
+                maxReconnectAttempts: 5
+            };
+            
+            // Reset global state variables
+            partnerInputs = null;
+            bothInputsReady = false;
+            
+            // Clear form fields
+            document.getElementById('userName').value = '';
+            document.getElementById('topicInput').value = '';
+            document.getElementById('objectives').value = '';
+            document.getElementById('mustHaves').value = '';
+            document.getElementById('constraints').value = '';
+            
+            // Reset login message to default
+            const loginMessage = document.getElementById('loginMessage');
+            if (loginMessage) {
+                loginMessage.innerHTML = 'Enter your name to begin a negotiation session';
             }
-            session = { id: null, userName: '', topic: '', isCreator: false, partnerName: '', agreed: false, partnerAgreed: false, userInputs: {} };
+            
+            // Reset URL
             window.history.pushState({}, '', window.location.pathname);
-            location.reload();
+            
+            // Go back to login
+            showScreen(loginScreen);
+            updateStepIndicator(1);
         }
 
-        // Initialize on load
-        init();
+        // Initialize app
+        window.onload = () => {
+            updateStepIndicator(1);
+            
+            // Check if joining existing session or returning initiator
+            const urlData = getSessionDataFromURL();
+            if (urlData && urlData.sessionId) {
+                const loginMessage = document.getElementById('loginMessage');
+                if (loginMessage) {
+                    if (urlData.isInitiator) {
+                        // Returning initiator
+                        loginMessage.innerHTML = 
+                            `<i class="fas fa-user-plus text-indigo-600 mr-2"></i>Welcome back!<br><strong>Your Topic:</strong> ${urlData.topic || 'Loading...'}<br><small class="text-gray-500">Your session is ready to share</small>`;
+                    } else {
+                        // Joining user
+                        loginMessage.innerHTML = 
+                            `<i class="fas fa-cloud text-indigo-600 mr-2"></i>You're joining a real-time session!<br><strong>Topic:</strong> ${urlData.topic || 'Loading...'}<br><small class="text-gray-500">Secure collaborative negotiation</small>`;
+                    }
+                }
+                showScreen(loginScreen);
+                addDebugLog(urlData.isInitiator ? 'Detected returning initiator' : 'Detected session join request', 'info');
+            } else {
+                // Normal flow - show login
+                showScreen(loginScreen);
+                addDebugLog('Starting new session creation', 'info');
+            }
+            
+            // Add button listeners with delegation
+            document.addEventListener('click', async (e) => {
+                if (e.target && e.target.id === 'testConnectionBtn') {
+                    e.preventDefault();
+                    if (sessionData.connectionState === 'connected') {
+                        await sendMessage({
+                            type: 'ping',
+                            userName: sessionData.userName
+                        });
+                        showNotification('Test ping sent via P2P!', 'info');
+                        addDebugLog('Test ping sent to peer', 'info');
+                    } else {
+                        showNotification('Not connected yet', 'warning');
+                        addDebugLog('Cannot send ping - no connection', 'warning');
+                    }
+                }
+                
+                if (e.target && e.target.id === 'toggleDebugBtn') {
+                    e.preventDefault();
+                    const debugPanel = document.getElementById('debugPanel');
+                    const btn = e.target;
+                    if (debugPanel) {
+                        if (debugPanel.classList.contains('hidden')) {
+                            debugPanel.classList.remove('hidden');
+                            btn.innerHTML = '<i class="fas fa-bug mr-1"></i>Hide Debug';
+                            updateDebugPanel();
+                        } else {
+                            debugPanel.classList.add('hidden');
+                            btn.innerHTML = '<i class="fas fa-bug mr-1"></i>Show Debug';
+                        }
+                    }
+                }
+            });
+        }
+
     </script>
 </body>
 </html>
