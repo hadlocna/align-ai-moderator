@@ -203,6 +203,7 @@
                 <div class="text-center p-8">
                     <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mx-auto"></div>
                     <h2 class="text-3xl font-bold mt-6">Your AI is Negotiating</h2>
+                    <p id="negotiationProgress" class="mt-4 text-indigo-600"></p>
                     <p class="text-lg text-gray-600 mt-2">This process is secure and private. A fair agreement is being crafted.</p>
                 </div>
 
@@ -316,6 +317,9 @@
         const userInputScreen = document.getElementById('userInputScreen');
         const waitingScreen = document.getElementById('waitingScreen');
         const resultsScreen = document.getElementById('resultsScreen');
+        const negotiationProgressEl = document.getElementById('negotiationProgress');
+
+        let negotiationStatusInterval = null;
 
         // Step indicators
         const step1Indicator = document.getElementById('step1Indicator');
@@ -1225,14 +1229,47 @@
             }
         }
 
+        function startNegotiationStatusPolling(sessionId) {
+            const statusUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? `http://localhost:3001/api/negotiation-status/${sessionId}`
+                : `https://align-ai-negotiation.onrender.com/api/negotiation-status/${sessionId}`;
+
+            negotiationProgressEl.textContent = 'Starting negotiation...';
+
+            negotiationStatusInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(statusUrl);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.status === 'completed') {
+                            negotiationProgressEl.textContent = 'Finalizing agreement...';
+                        } else {
+                            negotiationProgressEl.textContent = `Completed ${data.rounds} of 3 rounds...`;
+                        }
+                    }
+                } catch (err) {
+                    addDebugLog(`Status check failed: ${err.message}`, 'warning');
+                }
+            }, 1000);
+        }
+
+        function stopNegotiationStatusPolling() {
+            if (negotiationStatusInterval) {
+                clearInterval(negotiationStatusInterval);
+                negotiationStatusInterval = null;
+            }
+        }
+
         async function startAINegotiation() {
             try {
                 addDebugLog('Starting AI-to-AI negotiation...', 'info');
-                
+
                 // Show both users are in negotiation mode
                 showScreen(waitingScreen);
                 updateStepIndicator(2);
-                
+
+                startNegotiationStatusPolling(sessionData.sessionId);
+
                 // Send negotiation request to AI API
                 const negotiationRequest = {
                     sessionId: sessionData.sessionId,
@@ -1243,28 +1280,34 @@
                     },
                     user2Data: partnerInputs
                 };
-                
+
                 addDebugLog('Sending request to AI negotiation API...', 'info');
-                
+
                 // Call AI negotiation API
                 const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                     ? 'http://localhost:3001/api/start-negotiation'
                     : 'https://align-ai-negotiation.onrender.com/api/start-negotiation';
-                
-                const response = await fetch(apiUrl, {
+
+                const negotiationPromise = fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(negotiationRequest)
                 });
-                
+
+                const response = await negotiationPromise;
+
+                stopNegotiationStatusPolling();
+
                 if (!response.ok) {
                     throw new Error(`API request failed: ${response.status}`);
                 }
-                
+
                 const result = await response.json();
-                
+
+                negotiationProgressEl.textContent = 'Negotiation complete!';
+
                 if (result.success) {
                     addDebugLog(`AI negotiation completed in ${result.result.rounds} rounds`, 'success');
                     
@@ -1282,6 +1325,7 @@
                 }
                 
             } catch (error) {
+                stopNegotiationStatusPolling();
                 addDebugLog(`AI negotiation error: ${error.message}`, 'error');
                 showNotification('AI negotiation failed. Using fallback process...', 'warning');
                 
