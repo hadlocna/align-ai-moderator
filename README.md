@@ -13,6 +13,7 @@ Align is a web application that facilitates private negotiations between parties
 - **Zero-Knowledge Principle**: Only the final agreement is shared, private details are discarded
 - **Fair Outcomes**: AI agents work to find solutions that respect both parties' non-negotiables
 - **Transparent Process**: View insights into how the agreement was reached
+- **PDF Export**: Download the final agreement as a PDF with an Align Certified watermark (place `align-certified-watermark.png` in the project root)
 
 ## How It Works
 
@@ -114,7 +115,7 @@ Agreement Effective Date: Tonight
 - Real AI integration (currently uses mock responses)
 - Multi-party negotiations
 - Agreement templates
-- Export functionality
+- Expanded export functionality
 - Mobile app version
 
 ## Contributing

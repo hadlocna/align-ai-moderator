@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <style>
         body {
@@ -249,7 +251,8 @@
                     </div>
                 </div>
                 <div class="text-center mt-8 space-x-4">
-                     <button onclick="startOver()" class="bg-gray-200 text-gray-800 font-bold py-3 px-8 rounded-lg hover:bg-gray-300 transition">Start New Negotiation</button>
+                    <button id="downloadPdfBtn" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-indigo-700 transition">Download PDF</button>
+                    <button onclick="startOver()" class="bg-gray-200 text-gray-800 font-bold py-3 px-8 rounded-lg hover:bg-gray-300 transition">Start New Negotiation</button>
                 </div>
             </div>
         </div>
@@ -1352,7 +1355,37 @@
                 <p>This agreement takes effect immediately and includes a review period to ensure it works for both parties.</p>
             `;
         }
-        
+
+        async function downloadAgreementPDF() {
+            const { jsPDF } = window.jspdf;
+            const agreementCard = document.querySelector('#resultsScreen > div:first-child');
+            if (!agreementCard) return;
+
+            const canvas = await html2canvas(agreementCard, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+
+            const pdf = new jsPDF('p', 'pt', 'letter');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            const watermark = new Image();
+            watermark.src = 'align-certified-watermark.png';
+            await new Promise(resolve => watermark.onload = resolve);
+            const wmWidth = pageWidth * 0.6;
+            const wmHeight = watermark.height / watermark.width * wmWidth;
+            pdf.setGState(new pdf.GState({ opacity: 0.1 }));
+            pdf.addImage(watermark, 'PNG', (pageWidth - wmWidth) / 2, (pageHeight - wmHeight) / 2, wmWidth, wmHeight);
+            pdf.setGState(new pdf.GState({ opacity: 1 }));
+
+            const imgProps = pdf.getImageProperties(imgData);
+            const ratio = Math.min(pageWidth / imgProps.width, (pageHeight - 80) / imgProps.height);
+            const pdfWidth = imgProps.width * ratio;
+            const pdfHeight = imgProps.height * ratio;
+            pdf.addImage(imgData, 'PNG', (pageWidth - pdfWidth) / 2, 40, pdfWidth, pdfHeight);
+
+            pdf.save('agreement.pdf');
+        }
+
         function startOver() {
             // Clean up polling and session data
             cleanupSession();
@@ -1395,11 +1428,13 @@
             
             // Reset URL
             window.history.pushState({}, '', window.location.pathname);
-            
+
             // Go back to login
             showScreen(loginScreen);
             updateStepIndicator(1);
         }
+
+        document.getElementById('downloadPdfBtn').addEventListener('click', downloadAgreementPDF);
 
         // Handle browser backgrounding/foregrounding (mobile and desktop)
         function handleVisibilityChange() {
