@@ -19,7 +19,7 @@ const wss = new WebSocket.Server({ server });
 const sessions = new Map();
 
 // Auto-cleanup sessions older than 4 hours (for mobile persistence)
-setInterval(() => {
+const sessionCleanupInterval = setInterval(() => {
     const now = Date.now();
     for (const [sessionId, session] of sessions.entries()) {
         if (now - session.createdAt > 14400000) { // 4 hours
@@ -28,9 +28,10 @@ setInterval(() => {
         }
     }
 }, 600000); // Check every 10 minutes
+sessionCleanupInterval.unref();
 
 // Keep-alive mechanism for Render
-setInterval(() => {
+const keepAliveInterval = setInterval(() => {
     console.log(`Keep-alive: ${sessions.size} active sessions, ${wss.clients.size} connections`);
     
     // Send ping to all connected clients to keep connections alive
@@ -44,6 +45,7 @@ setInterval(() => {
         }
     });
 }, 45000); // Every 45 seconds
+keepAliveInterval.unref();
 
 wss.on('connection', (ws, req) => {
     console.log('New WebSocket connection');
@@ -271,17 +273,23 @@ function handleRelayMessage(ws, message) {
 
 const PORT = process.env.PORT || 8080;
 
-server.listen(PORT, () => {
-    console.log(`Privacy-first signaling server running on port ${PORT}`);
-    console.log('No data persistence - all sessions are ephemeral');
-});
+// Only start the server automatically if this file is executed directly.
+if (require.main === module) {
+    server.listen(PORT, () => {
+        console.log(`Privacy-first signaling server running on port ${PORT}`);
+        console.log('No data persistence - all sessions are ephemeral');
+    });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully');
-    wss.close(() => {
-        server.close(() => {
-            process.exit(0);
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+        console.log('SIGTERM received, shutting down gracefully');
+        wss.close(() => {
+            server.close(() => {
+                process.exit(0);
+            });
         });
     });
-});
+}
+
+// Export server and wss for testing
+module.exports = { server, wss, sessions };
