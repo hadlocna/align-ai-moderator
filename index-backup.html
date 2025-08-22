@@ -384,7 +384,8 @@
             messageQueue: [],
             ws: null,
             reconnectAttempts: 0,
-            maxReconnectAttempts: 5,
+            // Keep trying to reconnect indefinitely with exponential backoff
+            maxReconnectAttempts: Infinity,
             offlineMode: false,
             connectionFailed: false
         };
@@ -574,26 +575,35 @@
         }
         
         function attemptReconnect() {
-            if (sessionData.reconnectAttempts < sessionData.maxReconnectAttempts) {
-                sessionData.reconnectAttempts++;
-                addDebugLog(`Attempting reconnect ${sessionData.reconnectAttempts}/${sessionData.maxReconnectAttempts}`, 'warning');
-                
-                setTimeout(() => {
-                    if (sessionData.sessionId && !sessionData.offlineMode) {
-                        sessionData.isCreator ? initLocalSession() : joinLocalSession();
-                    }
-                }, 2000 * sessionData.reconnectAttempts);
-            } else {
+            // Always attempt to reconnect with exponential backoff. If a finite
+            // maxReconnectAttempts is provided, switch to offline mode after
+            // reaching it.
+            if (Number.isFinite(sessionData.maxReconnectAttempts) &&
+                sessionData.reconnectAttempts >= sessionData.maxReconnectAttempts) {
                 addDebugLog('Max reconnect attempts reached - enabling offline mode', 'warning');
                 sessionData.connectionState = 'offline';
                 sessionData.connectionFailed = true;
                 sessionData.offlineMode = true;
                 updateConnectionStatus();
                 showNotification('Connection failed. Continuing in offline mode - you can still use the app!', 'warning');
-                
+
                 // Allow user to proceed without connection
                 enableOfflineMode();
+                return;
             }
+
+            sessionData.reconnectAttempts++;
+            const backoff = Math.min(30000, 2000 * sessionData.reconnectAttempts);
+            const max = Number.isFinite(sessionData.maxReconnectAttempts)
+                ? sessionData.maxReconnectAttempts
+                : '∞';
+            addDebugLog(`Attempting reconnect ${sessionData.reconnectAttempts}/${max}`, 'warning');
+
+            setTimeout(() => {
+                if (sessionData.sessionId && !sessionData.offlineMode) {
+                    sessionData.isCreator ? initLocalSession() : joinLocalSession();
+                }
+            }, backoff);
         }
         
         function getCurrentScreen() {
@@ -1535,7 +1545,7 @@
                 messageQueue: [],
                 ws: null,
                 reconnectAttempts: 0,
-                maxReconnectAttempts: 5
+                maxReconnectAttempts: Infinity
             };
             
             // Reset global state variables
