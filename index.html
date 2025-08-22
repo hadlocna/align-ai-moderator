@@ -1286,12 +1286,25 @@
         function displayNegotiationResult(result) {
             agreementDiv.innerHTML = result.agreement;
             backchannelDiv.innerHTML = '';
-            
-            result.backchannel.forEach((item, index) => {
-                const p = document.createElement('p');
-                p.className = 'p-2 bg-gray-100 rounded-md mb-2';
-                p.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-2"></i> <strong>Round ${index + 1}:</strong> ${item}`;
-                backchannelDiv.appendChild(p);
+
+            result.backchannel.forEach(item => {
+                const details = document.createElement('details');
+                details.className = 'p-2 bg-gray-100 rounded-md mb-2';
+
+                const summary = document.createElement('summary');
+                summary.innerHTML = `<i class="fas fa-comments text-indigo-600 mr-2"></i> <strong>Round ${item.round}</strong>`;
+                details.appendChild(summary);
+
+                const content = document.createElement('div');
+                content.className = 'mt-2 space-y-1';
+                content.innerHTML = `
+                    <p><strong>${item.advocate1}:</strong> ${item.proposal1}</p>
+                    <p><strong>${item.advocate2}:</strong> ${item.proposal2}</p>
+                    <p><strong>Moderator:</strong> ${item.moderation}</p>
+                `;
+                details.appendChild(content);
+
+                backchannelDiv.appendChild(details);
             });
 
             // Transition to results screen
@@ -1315,11 +1328,46 @@
             const mockResult = {
                 agreement: generateMockAgreement(topic, userInputs, partnerData),
                 backchannel: [
-                    "Identified both parties' core needs and constraints",
-                    "Found areas of potential compromise and mutual benefit",
-                    "Developed a time-sharing solution that respects both schedules",
-                    "Ensured fairness and equal distribution of responsibilities",
-                    "Confirmed all non-negotiable requirements are met"
+                    {
+                        round: 1,
+                        advocate1: 'Advocate 1',
+                        advocate2: 'Advocate 2',
+                        proposal1: 'Outlined core needs',
+                        proposal2: 'Outlined core needs',
+                        moderation: "Identified both parties' core needs and constraints"
+                    },
+                    {
+                        round: 2,
+                        advocate1: 'Advocate 1',
+                        advocate2: 'Advocate 2',
+                        proposal1: 'Proposed compromise',
+                        proposal2: 'Provided counter-offer',
+                        moderation: 'Found areas of potential compromise and mutual benefit'
+                    },
+                    {
+                        round: 3,
+                        advocate1: 'Advocate 1',
+                        advocate2: 'Advocate 2',
+                        proposal1: 'Suggested schedule',
+                        proposal2: 'Adjusted schedule',
+                        moderation: 'Developed a time-sharing solution that respects both schedules'
+                    },
+                    {
+                        round: 4,
+                        advocate1: 'Advocate 1',
+                        advocate2: 'Advocate 2',
+                        proposal1: 'Ensured fairness',
+                        proposal2: 'Agreed on fairness',
+                        moderation: 'Ensured fairness and equal distribution of responsibilities'
+                    },
+                    {
+                        round: 5,
+                        advocate1: 'Advocate 1',
+                        advocate2: 'Advocate 2',
+                        proposal1: 'Confirmed requirements',
+                        proposal2: 'Confirmed requirements',
+                        moderation: 'Confirmed all non-negotiable requirements are met'
+                    }
                 ]
             };
             
