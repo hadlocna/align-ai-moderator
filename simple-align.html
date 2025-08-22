@@ -76,6 +76,8 @@
         .text-small { font-size: 14px; color: #64748b; }
         .mt { margin-top: 20px; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -142,6 +144,7 @@
         <div id="resultsScreen" class="card hidden">
             <h2>Proposed Agreement</h2>
             <div id="agreementResult"></div>
+            <button id="downloadPdfBtn" class="mt">Download PDF</button>
             <button onclick="startOver()" class="mt">Start New Session</button>
         </div>
 
@@ -381,6 +384,39 @@
             showScreen('agreementScreen');
         }
 
+        async function downloadAgreementPDF() {
+            const { jsPDF } = window.jspdf;
+            const temp = document.createElement('div');
+            temp.style.padding = '20px';
+            temp.innerHTML = `<h2>Proposed Agreement</h2>${document.getElementById('agreementResult').innerHTML}`;
+            document.body.appendChild(temp);
+
+            const canvas = await html2canvas(temp, { scale: 2 });
+            document.body.removeChild(temp);
+
+            const pdf = new jsPDF('p', 'pt', 'letter');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            const watermark = new Image();
+            watermark.src = 'align-certified-watermark.png';
+            await new Promise(resolve => watermark.onload = resolve);
+            const wmWidth = pageWidth * 0.6;
+            const wmHeight = watermark.height / watermark.width * wmWidth;
+            pdf.setGState(new pdf.GState({ opacity: 0.1 }));
+            pdf.addImage(watermark, 'PNG', (pageWidth - wmWidth) / 2, (pageHeight - wmHeight) / 2, wmWidth, wmHeight);
+            pdf.setGState(new pdf.GState({ opacity: 1 }));
+
+            const imgData = canvas.toDataURL('image/png');
+            const imgProps = pdf.getImageProperties(imgData);
+            const ratio = Math.min(pageWidth / imgProps.width, (pageHeight - 80) / imgProps.height);
+            const pdfWidth = imgProps.width * ratio;
+            const pdfHeight = imgProps.height * ratio;
+            pdf.addImage(imgData, 'PNG', (pageWidth - pdfWidth) / 2, 40, pdfWidth, pdfHeight);
+
+            pdf.save('agreement.pdf');
+        }
+
         function startOver() {
             localStorage.removeItem('align_session');
             if (session.id) {
@@ -390,6 +426,8 @@
             window.history.pushState({}, '', window.location.pathname);
             location.reload();
         }
+
+        document.getElementById('downloadPdfBtn').addEventListener('click', downloadAgreementPDF);
 
         // Initialize on load
         init();
