@@ -1716,6 +1716,16 @@
             });
         }
 
+        // Ensure focused inputs stay visible on mobile when the keyboard opens
+        document.querySelectorAll('input, textarea').forEach((el) => {
+            el.addEventListener('focus', () => {
+                // Delay scrolling to allow the keyboard to appear
+                setTimeout(() => {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            });
+        });
+
     </script>
 </body>
 </html>
