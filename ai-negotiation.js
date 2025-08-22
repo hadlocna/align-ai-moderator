@@ -71,7 +71,7 @@ Remember: The other party has their own AI advocate. Work together to find a sol
                     { role: 'system', content: this.getSystemPrompt() },
                     { role: 'user', content: prompt }
                 ],
-                max_tokens: 300,
+                max_completion_tokens: 300,
                 temperature: 0.7
             });
 
@@ -143,7 +143,7 @@ Please moderate this round by:
                     { role: 'system', content: this.getSystemPrompt() },
                     { role: 'user', content: context }
                 ],
-                max_tokens: 400,
+                max_completion_tokens: 400,
                 temperature: 0.3
             });
 
@@ -188,7 +188,7 @@ The agreement should be specific, fair, and implementable by both parties.`;
                     { role: 'system', content: this.getSystemPrompt() },
                     { role: 'user', content: prompt }
                 ],
-                max_tokens: 600,
+                max_completion_tokens: 600,
                 temperature: 0.1
             });
 

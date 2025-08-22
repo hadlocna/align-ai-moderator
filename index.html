@@ -713,7 +713,7 @@
                     break;
                 case 'negotiationComplete':
                     addDebugLog(`Received negotiation results from ${message.sender}`, 'success');
-                    displayNegotiationResult(message.content);
+                    displayNegotiationResult(message.result);
                     break;
                 case 'ping':
                     showNotification(`Ping from ${message.sender}`, 'success');
@@ -1137,6 +1137,25 @@
             document.getElementById('agreedTopic').textContent = sessionData.topic;
             showScreen(userInputScreen);
             updateStepIndicator(1);
+            
+            // Prefill test inputs for easier testing
+            const objectivesEl = document.getElementById('objectives');
+            const mustHavesEl = document.getElementById('mustHaves');
+            const constraintsEl = document.getElementById('constraints');
+            
+            if (sessionData.isCreator) {
+                // Initiator/Creator test inputs
+                if (!objectivesEl.value) objectivesEl.value = "I want a fair division of household chores that doesn't overwhelm either person and allows time for relaxation.";
+                if (!mustHavesEl.value) mustHavesEl.value = "I refuse to do dishes every single day - we need to alternate or find another solution.";
+                if (!constraintsEl.value) constraintsEl.value = "I work long hours during the week, so weekends are important downtime for me.";
+            } else {
+                // Joiner/Receiver test inputs  
+                if (!objectivesEl.value) objectivesEl.value = "I need my partner to take on more household responsibilities so I don't feel like I'm doing everything.";
+                if (!mustHavesEl.value) mustHavesEl.value = "Dishes must be done every night - I can't stand waking up to a messy kitchen.";
+                if (!constraintsEl.value) constraintsEl.value = "I'm willing to negotiate other chores, but cleanliness in the kitchen is non-negotiable for me.";
+            }
+            
+            addDebugLog(`Prefilled test inputs for ${sessionData.isCreator ? 'creator' : 'joiner'}`, 'info');
         }
         
         function handlePartnerInputsReceived(message) {
