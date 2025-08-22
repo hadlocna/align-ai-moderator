@@ -174,13 +174,32 @@ Please moderate this round by:
             .map((round, index) => `Round ${index + 1}:\n- ${this.advocate1.userName}: ${round.proposal1}\n- ${this.advocate2.userName}: ${round.proposal2}\n- Moderator: ${round.moderation}`)
             .join('\n\n');
 
-        const prompt = `Based on the complete negotiation below, generate a final agreement:
+        const prompt = `Based on the complete negotiation below, draft the final agreement.
 
 ${negotiationSummary}
 
-Please provide:
-1. A clear, actionable final agreement in HTML format
-2. A brief summary of how this agreement was reached (for transparency)
+Return a cleanly formatted response that contains:
+
+1. An HTML code block:
+   - Start with <h1>Final ${this.topic} Agreement</h1>
+   - Use <p> elements for each numbered clause in the form <p><strong>1. Clause Title:</strong> Clause text.</p>
+   - Use <h2> subheadings where helpful.
+   - When listing bullet points, use <ul> and <li> with <strong> labels.
+   - Ensure the HTML is properly indented and valid.
+
+2. A short plain-text summary (outside the code block) explaining how the agreement was reached.
+
+Example structure:
+
+\`\`\`html
+<h1>Final ${this.topic} Agreement</h1>
+<p><strong>1. Clause Name:</strong> Clause details.</p>
+<p><strong>2. Clause Name:</strong> Clause details.</p>
+<h2>Guiding Principles</h2>
+<ul>
+  <li><strong>Principle:</strong> Explanation.</li>
+</ul>
+\`\`\`
 
 The agreement should be specific, fair, and implementable by both parties.`;
 

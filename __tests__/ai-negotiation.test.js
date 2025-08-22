@@ -49,4 +49,24 @@ describe('AI negotiation agents', () => {
     expect(context).toContain('proposal from Bob');
     expect(moderator.negotiationRounds).toHaveLength(1);
   });
+
+  test('AIModerator uses structured prompt for final agreement', async () => {
+    mockCreate.mockResolvedValue({ choices: [{ message: { content: 'final' } }] });
+    const advocate1 = new AIAdvocate('Alice', { objectives: 'o1', mustHaves: 'm1', constraints: 'c1' }, 'Dishwashing');
+    const advocate2 = new AIAdvocate('Bob', { objectives: 'o2', mustHaves: 'm2', constraints: 'c2' }, 'Dishwashing');
+    const moderator = new AIModerator('Dishwashing', advocate1, advocate2);
+    moderator.negotiationRounds.push({
+      proposal1: 'p1',
+      proposal2: 'p2',
+      moderation: 'm1',
+      timestamp: Date.now()
+    });
+
+    await moderator.generateFinalAgreement();
+    expect(mockCreate).toHaveBeenCalled();
+    const call = mockCreate.mock.calls[0][0];
+    const userPrompt = call.messages[1].content;
+    expect(userPrompt).toContain('<h1>Final Dishwashing Agreement</h1>');
+    expect(userPrompt).toContain('short plain-text summary');
+  });
 });
