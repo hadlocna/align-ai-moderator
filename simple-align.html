@@ -431,6 +431,15 @@
 
         // Initialize on load
         init();
+
+        // Keep focused inputs visible on mobile when the on-screen keyboard appears
+        document.querySelectorAll('input, textarea').forEach((el) => {
+            el.addEventListener('focus', () => {
+                setTimeout(() => {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            });
+        });
     </script>
 </body>
 </html>
