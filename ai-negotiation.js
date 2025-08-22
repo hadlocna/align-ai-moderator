@@ -333,9 +333,11 @@ setInterval(() => {
 }, 600000); // Every 10 minutes
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-    console.log(`AI Negotiation API running on port ${PORT}`);
-    console.log(`OpenAI configured: ${!!openai}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`AI Negotiation API running on port ${PORT}`);
+        console.log(`OpenAI configured: ${!!openai}`);
+    });
+}
 
-module.exports = { AIAdvocate, AIModerator };
+module.exports = { AIAdvocate, AIModerator, app };
