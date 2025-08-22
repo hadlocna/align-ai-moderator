@@ -1,6 +1,6 @@
 {
   "name": "align-ai-moderator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A private, fair way to find agreement through AI-to-AI moderated negotiations",
   "main": "server.js",
   "scripts": {
