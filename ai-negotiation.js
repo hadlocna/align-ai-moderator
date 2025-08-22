@@ -18,6 +18,9 @@ if (process.env.OPENAI_API_KEY) {
     });
 }
 
+// Allow configurable model; default to the latest GPT-5 chat model
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-chat-latest';
+
 // In-memory storage for active negotiations (in production, use Redis)
 const activeNegotiations = new Map();
 
@@ -66,12 +69,12 @@ Remember: The other party has their own AI advocate. Work together to find a sol
 
         try {
             const response = await openai.chat.completions.create({
-                model: 'gpt-5',
+                model: OPENAI_MODEL,
                 messages: [
                     { role: 'system', content: this.getSystemPrompt() },
                     { role: 'user', content: prompt }
                 ],
-                max_completion_tokens: 300,
+                max_tokens: 300,
                 temperature: 0.7
             });
 
@@ -138,12 +141,12 @@ Please moderate this round by:
 
         try {
             const response = await openai.chat.completions.create({
-                model: 'gpt-5',
+                model: OPENAI_MODEL,
                 messages: [
                     { role: 'system', content: this.getSystemPrompt() },
                     { role: 'user', content: context }
                 ],
-                max_completion_tokens: 400,
+                max_tokens: 400,
                 temperature: 0.3
             });
 
@@ -183,12 +186,12 @@ The agreement should be specific, fair, and implementable by both parties.`;
 
         try {
             const response = await openai.chat.completions.create({
-                model: 'gpt-5',
+                model: OPENAI_MODEL,
                 messages: [
                     { role: 'system', content: this.getSystemPrompt() },
                     { role: 'user', content: prompt }
                 ],
-                max_completion_tokens: 600,
+                max_tokens: 600,
                 temperature: 0.1
             });
 

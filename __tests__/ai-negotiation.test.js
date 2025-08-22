@@ -7,6 +7,7 @@ jest.mock('openai', () => {
 });
 
 process.env.OPENAI_API_KEY = 'test';
+process.env.OPENAI_MODEL = 'test-model';
 
 const { AIAdvocate, AIModerator } = require('../ai-negotiation');
 
@@ -31,6 +32,7 @@ describe('AI negotiation agents', () => {
     expect(systemPrompt).toContain('win');
     expect(systemPrompt).toContain('red lines');
     expect(systemPrompt).toContain('time');
+    expect(call.model).toBe('test-model');
   });
 
   test('AIModerator sees proposals from both advocates', async () => {

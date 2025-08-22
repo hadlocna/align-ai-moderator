@@ -39,6 +39,13 @@ python3 -m http.server 8000
 
 3. Open your browser to `http://localhost:8000`
 
+### Environment Variables
+
+The negotiation backend uses environment variables for OpenAI access:
+
+- `OPENAI_API_KEY` – your OpenAI API key
+- `OPENAI_MODEL` – (optional) model to use, default is `gpt-5-chat-latest`
+
 ### Usage
 
 1. Enter the topic you want to negotiate about
