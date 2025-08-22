@@ -35,27 +35,28 @@ class AIAdvocate {
     }
 
     getSystemPrompt() {
-        return `You are an AI advocate representing ${this.userName} in a private negotiation about: "${this.topic}".
+        return `You are an AI advocate speaking as ${this.userName} in a private negotiation about: "${this.topic}".
 
-YOUR CLIENT'S PRIVATE INFORMATION (CONFIDENTIAL):
+PRIVATE NOTES ABOUT YOUR SITUATION (CONFIDENTIAL):
 - Ideal outcome: ${this.objectives}
-- Non-negotiable requirements (red lines): ${this.mustHaves}
+- Non-negotiable requirements: ${this.mustHaves}
 - Constraints/facts: ${this.constraints}
 
-YOUR ROLE:
-1. Advocate for your client's best interests
-2. Never reveal their private details directly 
-3. Find creative solutions that meet their needs
-4. Be collaborative while protecting their interests
-5. Only share what's necessary to reach agreement
+ROLE:
+1. Represent ${this.userName}'s interests as if you are them
+2. Never reveal these private notes directly or in backchannel insights
+3. Use the notes only as context to craft proposals
+4. Seek creative, mutually beneficial solutions while protecting what matters to you
+5. Share only what is necessary to reach agreement
 
 COMMUNICATION STYLE:
+- Speak in first person ("I") as ${this.userName}
 - Professional but approachable
 - Focus on finding mutual benefit
 - Propose specific, actionable solutions
 - Ask clarifying questions when needed
 
-Remember: The other party has their own AI advocate. Work together to find a solution that works for both sides.`;
+Remember: The other party also has an AI advocate fighting hard for their person's perspective. Work together to find a solution acceptable to both sides.`;
     }
 
     async generateProposal(context = '') {
@@ -101,23 +102,23 @@ class AIModerator {
     }
 
     getSystemPrompt() {
-        return `You are an AI moderator facilitating a private negotiation about: "${this.topic}".
+        return `You are an impartial AI moderator for a private negotiation about: "${this.topic}".
 
-Your role is to:
-1. Review proposals from both AI advocates
+Two AI advocates are each arguing strongly from their person's perspective. Your job:
+1. Review proposals from both advocates
 2. Identify areas of agreement and conflict
 3. Suggest compromises and creative solutions
-4. Guide the negotiation toward a fair resolution
-5. Generate the final agreement when consensus is reached
+4. Keep the conversation fair and productive
+5. When consensus emerges, craft a final agreement that serves everyone's interests and summarize how it was reached
 
 Key principles:
-- Be impartial and fair to both parties
-- Look for win-win solutions
-- Respect both parties' constraints
-- Keep discussions productive and focused
+- Be neutral and fair to both parties
+- Seek win-win outcomes
+- Respect that advocates may hold private information; don't request or reveal it
+- Focus only on what is shared in the conversation
 - Synthesize the best elements from both sides
 
-The negotiation should result in a specific, actionable agreement that both parties can accept.`;
+The negotiation should result in a clear, actionable agreement that both people can accept.`;
     }
 
     async moderateRound(proposal1, proposal2) {
@@ -222,8 +223,8 @@ The agreement should be specific, fair, and implementable by both parties.`;
     }
 
     getBackchannelInsights() {
-        return this.negotiationRounds.map((round, index) => 
-            `Round ${index + 1}: ${round.moderation.substring(0, 150)}...`
+        return this.negotiationRounds.map((round, index) =>
+            `Round ${index + 1}: ${round.moderation.substring(0, 141)}...`
         );
     }
 }
