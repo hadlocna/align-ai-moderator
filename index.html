@@ -16,13 +16,18 @@
             background-color: #f7f8fc;
         }
         .step-active {
-            border-color: #4f46e5;
-            color: #4f46e5;
+            color: #166534;
+            background-color: #dcfce7;
+        }
+        .step-active > div:first-child {
+            border-color: #16a34a;
         }
         .step-done {
+            color: #166534;
+            background-color: #bbf7d0;
+        }
+        .step-done > div:first-child {
             border-color: #16a34a;
-            color: #16a34a;
-            background-color: #f0fdf4;
         }
         .privacy-card {
             background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
@@ -874,16 +879,17 @@
         }
 
         function updateStepIndicator(step) {
-            step1Indicator.classList.remove('step-active', 'step-done');
-            step2Indicator.classList.remove('step-active', 'step-done');
-            step3Indicator.classList.remove('step-active', 'step-done');
-
-            if (step >= 1) step1Indicator.classList.add('step-done');
-            if (step >= 2) step2Indicator.classList.add('step-done');
-            
-            if (step === 1) step1Indicator.classList.add('step-active');
-            if (step === 2) step2Indicator.classList.add('step-active');
-            if (step === 3) step3Indicator.classList.add('step-active');
+            const indicators = [step1Indicator, step2Indicator, step3Indicator];
+            indicators.forEach((indicator, index) => {
+                indicator.classList.remove('step-active', 'step-done', 'text-gray-400');
+                if (index + 1 < step) {
+                    indicator.classList.add('step-done');
+                } else if (index + 1 === step) {
+                    indicator.classList.add('step-active');
+                } else {
+                    indicator.classList.add('text-gray-400');
+                }
+            });
         }
         
         // Event Listeners
