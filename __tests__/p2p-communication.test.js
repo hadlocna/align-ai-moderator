@@ -18,11 +18,13 @@ describe('P2P Communication Tests', () => {
     afterAll((done) => {
         // Close all WebSocket connections
         wsClients.forEach(ws => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.close();
+            if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+                ws.terminate();
             }
         });
-        testServer.close(done);
+        wss.close();
+        testServer.close();
+        done();
     });
     
     beforeEach(() => {
@@ -52,10 +54,20 @@ describe('P2P Communication Tests', () => {
     test('should create and join a session successfully', (done) => {
         const creator = createWebSocketConnection();
         const joiner = createWebSocketConnection();
-        
+
         let creatorReady = false;
         let joinerReady = false;
-        
+        let joinerOpen = false;
+
+        const sendJoin = () => {
+            joiner.send(JSON.stringify({
+                type: 'join_session',
+                sessionId: 'test-session-123',
+                userName: 'Bob',
+                topic: 'Test Topic'
+            }));
+        };
+
         creator.on('open', () => {
             creator.send(JSON.stringify({
                 type: 'create_session',
@@ -64,29 +76,28 @@ describe('P2P Communication Tests', () => {
                 userName: 'Alice'
             }));
         });
-        
+
         creator.on('message', (data) => {
             const message = JSON.parse(data);
             if (message.type === 'session_created') {
                 creatorReady = true;
-                // Now join with second client
-                joiner.send(JSON.stringify({
-                    type: 'join_session',
-                    sessionId: 'test-session-123',
-                    userName: 'Bob',
-                    topic: 'Test Topic'
-                }));
+                if (joinerOpen) {
+                    sendJoin();
+                }
             }
             if (message.type === 'participant_joined' && message.userName === 'Bob') {
                 expect(message.participantCount).toBe(2);
                 if (creatorReady && joinerReady) done();
             }
         });
-        
+
         joiner.on('open', () => {
-            // Wait for creator to create session first
+            joinerOpen = true;
+            if (creatorReady) {
+                sendJoin();
+            }
         });
-        
+
         joiner.on('message', (data) => {
             const message = JSON.parse(data);
             if (message.type === 'participant_joined' && message.userName === 'Bob') {
@@ -262,7 +273,28 @@ describe('P2P Communication Tests', () => {
         const creator = createWebSocketConnection();
         const joiner1 = createWebSocketConnection();
         const joiner2 = createWebSocketConnection();
-        
+
+        let joiner1Open = false;
+        let joiner2Open = false;
+
+        const sendJoiner1 = () => {
+            joiner1.send(JSON.stringify({
+                type: 'join_session',
+                sessionId: 'limit-test-123',
+                userName: 'Bob',
+                topic: 'Limit Test'
+            }));
+        };
+
+        const sendJoiner2 = () => {
+            joiner2.send(JSON.stringify({
+                type: 'join_session',
+                sessionId: 'limit-test-123',
+                userName: 'Charlie',
+                topic: 'Limit Test'
+            }));
+        };
+
         creator.on('open', () => {
             creator.send(JSON.stringify({
                 type: 'create_session',
@@ -271,29 +303,29 @@ describe('P2P Communication Tests', () => {
                 userName: 'Alice'
             }));
         });
-        
+
         creator.on('message', (data) => {
             const message = JSON.parse(data);
             if (message.type === 'session_created') {
-                // First joiner should succeed
-                joiner1.send(JSON.stringify({
-                    type: 'join_session',
-                    sessionId: 'limit-test-123',
-                    userName: 'Bob',
-                    topic: 'Limit Test'
-                }));
+                if (joiner1Open) {
+                    sendJoiner1();
+                }
             }
             if (message.type === 'participant_joined' && message.userName === 'Bob') {
-                // Second joiner should fail
-                joiner2.send(JSON.stringify({
-                    type: 'join_session',
-                    sessionId: 'limit-test-123',
-                    userName: 'Charlie',
-                    topic: 'Limit Test'
-                }));
+                if (joiner2Open) {
+                    sendJoiner2();
+                }
             }
         });
-        
+
+        joiner1.on('open', () => {
+            joiner1Open = true;
+        });
+
+        joiner2.on('open', () => {
+            joiner2Open = true;
+        });
+
         joiner2.on('message', (data) => {
             const message = JSON.parse(data);
             if (message.type === 'error' && message.message === 'Session is full') {

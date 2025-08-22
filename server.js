@@ -1,11 +1,26 @@
 const WebSocket = require('ws');
 const http = require('http');
+const { execSync } = require('child_process');
+const { version: pkgVersion } = require('./package.json');
 
-// Create HTTP server for health checks
+// Determine application version from git commit count
+let appVersion = pkgVersion;
+try {
+    const commitCount = execSync('git rev-list --count HEAD').toString().trim();
+    const [major = '0', minor = '0'] = pkgVersion.split('.');
+    appVersion = `${major}.${minor}.${commitCount}`;
+} catch (err) {
+    console.error('Could not determine app version from git:', err);
+}
+
+// Create HTTP server for health checks and version info
 const server = http.createServer((req, res) => {
     if (req.url === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'healthy', connections: wss.clients.size }));
+    } else if (req.url === '/version') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ version: appVersion }));
     } else {
         res.writeHead(404);
         res.end('Not Found');
