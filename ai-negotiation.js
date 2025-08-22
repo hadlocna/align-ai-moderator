@@ -223,9 +223,14 @@ The agreement should be specific, fair, and implementable by both parties.`;
     }
 
     getBackchannelInsights() {
-        return this.negotiationRounds.map((round, index) =>
-            `Round ${index + 1}: ${round.moderation.substring(0, 141)}...`
-        );
+        return this.negotiationRounds.map((round, index) => ({
+            round: index + 1,
+            advocate1: this.advocate1.userName,
+            advocate2: this.advocate2.userName,
+            proposal1: round.proposal1,
+            proposal2: round.proposal2,
+            moderation: round.moderation
+        }));
     }
 }
 

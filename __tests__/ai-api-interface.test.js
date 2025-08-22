@@ -161,15 +161,21 @@ describe('AI API Interface Tests', () => {
             moderator.negotiationRounds.push({
                 proposal1: 'Alice proposal',
                 proposal2: 'Bob proposal',
-                moderation: 'This is a moderator response that should be truncated because it is longer than 150 characters and we want to test the substring functionality',
+                moderation: 'Moderator response detailing the negotiation',
                 timestamp: Date.now()
             });
-            
+
             const insights = moderator.getBackchannelInsights();
-            
+
             expect(insights).toHaveLength(1);
-            expect(insights[0]).toContain('Round 1:');
-            expect(insights[0].length).toBeLessThanOrEqual(153); // "Round 1: " + 150 + "..."
+            expect(insights[0]).toEqual({
+                round: 1,
+                advocate1: 'Alice',
+                advocate2: 'Bob',
+                proposal1: 'Alice proposal',
+                proposal2: 'Bob proposal',
+                moderation: 'Moderator response detailing the negotiation'
+            });
         });
     });
     
