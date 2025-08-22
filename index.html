@@ -1292,8 +1292,57 @@
             }
         }
         
+        function formatAgreementContent(raw) {
+            const summaryMatch = raw.match(/Plain-text summary:\s*([\s\S]*)/i);
+            let summary = '';
+            let agreementText = raw;
+
+            if (summaryMatch) {
+                summary = summaryMatch[1].trim();
+                agreementText = raw.slice(0, summaryMatch.index).trim();
+            }
+
+            const codeMatch = agreementText.match(/```(?:html)?\n([\s\S]*?)```/i);
+            let html = '';
+            if (codeMatch) {
+                html = codeMatch[1].trim();
+            } else {
+                const lines = agreementText.split(/\r?\n/).filter(l => l.trim().length);
+                let inList = false;
+                lines.forEach(line => {
+                    if (/^Final\b/i.test(line)) {
+                        html += `<h1>${line.trim()}</h1>`;
+                    } else if (/^\d+\./.test(line)) {
+                        const [num, rest] = line.split(/\.\s*/, 2);
+                        const [title, text] = rest.split(/:\s*/, 2);
+                        html += `<p><strong>${num}. ${title}:</strong> ${text}</p>`;
+                    } else if (/^Guiding Principles/i.test(line)) {
+                        if (inList) { html += '</ul>'; inList = false; }
+                        html += `<h2>${line.trim()}</h2>`;
+                    } else if (/^[A-Za-z ]+:/.test(line)) {
+                        if (!inList) { html += '<ul>'; inList = true; }
+                        const [label, text] = line.split(/:\s*/, 2);
+                        html += `<li><strong>${label}:</strong> ${text}</li>`;
+                    } else {
+                        if (inList) { html += '</ul>'; inList = false; }
+                        html += `<p>${line.trim()}</p>`;
+                    }
+                });
+                if (inList) html += '</ul>';
+            }
+
+            return { html, summary };
+        }
+
         function displayNegotiationResult(result) {
-            agreementDiv.innerHTML = result.agreement;
+            const { html, summary } = formatAgreementContent(result.agreement);
+            agreementDiv.innerHTML = html;
+            if (summary) {
+                const summaryEl = document.createElement('p');
+                summaryEl.className = 'mt-4 text-sm italic text-gray-600';
+                summaryEl.textContent = summary;
+                agreementDiv.appendChild(summaryEl);
+            }
             backchannelDiv.innerHTML = '';
 
             result.backchannel.forEach(item => {
