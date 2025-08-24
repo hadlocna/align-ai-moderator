@@ -181,7 +181,7 @@ ${negotiationSummary}
 
 Return results in TWO parts, in this exact order:
 
-1) A fenced JSON block (```json ... ```), containing ONLY a single JSON object with this schema:
+1) A fenced JSON block (\`\`\`json ... \`\`\`), containing ONLY a single JSON object with this schema:
 {
   "title": string,                          // Short title of the agreement
   "clauses": [ { "title": string, "text": string } ], // 3-7 clear, actionable clauses
@@ -190,7 +190,7 @@ Return results in TWO parts, in this exact order:
   "html": string                            // HTML rendering of the agreement body (optional; safe markup only)
 }
 
-2) A fenced HTML block (```html ... ```), a readable HTML rendering of the agreement with headings and lists.
+2) A fenced HTML block (\`\`\`html ... \`\`\`), a readable HTML rendering of the agreement with headings and lists.
 
 Notes:
 - The JSON MUST be valid and parseable. Do not include trailing commas or comments.

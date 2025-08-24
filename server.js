@@ -19,9 +19,9 @@ try {
 
 // Create HTTP server for health checks, version info, and PDF generation
 const server = http.createServer(async (req, res) => {
-    // Basic CORS for simple health/version endpoints
+    // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') {
         res.writeHead(204);
@@ -47,7 +47,8 @@ const server = http.createServer(async (req, res) => {
                 html = '<p>No content</p>',
                 title = 'Align Certified Agreement',
                 topic = 'Agreement',
-                filename = 'agreement.pdf'
+                filename = 'agreement.pdf',
+                agreementId = ''
             } = payload || {};
 
             // Resolve watermark file - prefer group/ path if present
@@ -65,6 +66,14 @@ const server = http.createServer(async (req, res) => {
                 }
             }
 
+            // Embed logo if available
+            const logoPath = path.join(rootDir, 'Align_Logo.png');
+            let logoDataUrl = '';
+            if (fs.existsSync(logoPath)) {
+                const b64 = fs.readFileSync(logoPath).toString('base64');
+                logoDataUrl = `data:image/png;base64,${b64}`;
+            }
+
             // Lazy import puppeteer
             if (!puppeteer) {
                 try {
@@ -80,6 +89,8 @@ const server = http.createServer(async (req, res) => {
             });
             try {
                 const page = await browser.newPage();
+                const safeTopic = escapeHtml(topic);
+                const safeId = escapeHtml(agreementId || '');
                 const docHtml = `
 <!DOCTYPE html>
 <html>
@@ -91,13 +102,13 @@ const server = http.createServer(async (req, res) => {
     body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #111827; }
     h1,h2,h3 { margin: 0 0 8px 0; }
     p { line-height: 1.5; }
-    .header { text-align: center; margin-bottom: 12px; }
-    .topic { font-size: 20px; font-weight: 700; color: #1f2937; }
+    .header { text-align: center; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .logo { height: 28px; }
+    .topic { font-size: 18px; font-weight: 700; color: #1f2937; }
     .container { position: relative; }
     .watermark { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0.1; }
     .watermark img { max-width: 70%; transform: rotate(-25deg); filter: grayscale(100%); }
     .content { position: relative; z-index: 1; }
-    .footer { position: fixed; bottom: 0.4in; left: 0.75in; right: 0.75in; font-size: 10px; color: #6b7280; display: flex; justify-content: flex-end; }
   </style>
   </head>
   <body>
@@ -105,27 +116,49 @@ const server = http.createServer(async (req, res) => {
       ${watermarkDataUrl ? `<div class="watermark"><img src="${watermarkDataUrl}" alt="watermark" /></div>` : ''}
       <div class="content">
         <div class="header">
-          <div class="topic">${escapeHtml(topic)}</div>
-          <div style="height:8px"></div>
-          <div style="height:1px;background:#e5e7eb"></div>
+          ${logoDataUrl ? `<img class="logo" src="${logoDataUrl}" alt="Align"/>` : ''}
+          <div class="topic">${safeTopic}${safeId ? ` • ${safeId}` : ''}</div>
         </div>
+        <div style="height:8px"></div>
+        <div style="height:1px;background:#e5e7eb"></div>
         ${html}
       </div>
     </div>
-    <div class="footer">Align • Certified Agreement</div>
   </body>
 </html>`;
 
                 await page.setContent(docHtml, { waitUntil: 'networkidle0' });
+
+                // Header/footer with page numbers
+                const headerTemplate = `
+                  <div style="font-size:8px;width:100%;padding:0 0.5in;color:#6b7280;display:flex;justify-content:space-between;align-items:center;">
+                    <span>Align • Certified Agreement</span>
+                    <span>${safeTopic}${safeId ? ` • ${safeId}` : ''}</span>
+                  </div>`;
+                const footerTemplate = `
+                  <div style="font-size:8px;width:100%;padding:0 0.5in;color:#6b7280;display:flex;justify-content:flex-end;">
+                    <span class="pageNumber"></span> / <span class="totalPages"></span>
+                  </div>`;
+
                 const pdfBuffer = await page.pdf({
                     format: 'Letter',
                     printBackground: true,
-                    margin: { top: '0.75in', bottom: '0.75in', left: '0.75in', right: '0.75in' }
+                    displayHeaderFooter: true,
+                    headerTemplate,
+                    footerTemplate,
+                    margin: { top: '1in', bottom: '0.8in', left: '0.75in', right: '0.75in' }
                 });
+
+                // Hashes for verification (hash of content and of the final PDF)
+                const crypto = require('crypto');
+                const contentHash = crypto.createHash('sha256').update(String(html || '') + '|' + String(topic || '')).digest('hex');
+                const pdfHash = crypto.createHash('sha256').update(pdfBuffer).digest('hex');
 
                 res.writeHead(200, {
                     'Content-Type': 'application/pdf',
-                    'Content-Disposition': `attachment; filename="${sanitizeFilename(filename || `Agreement_${slugify(topic)}.pdf`)}"`
+                    'Content-Disposition': `attachment; filename="${sanitizeFilename(filename || `Agreement_${slugify(topic)}.pdf`)}"`,
+                    'X-Content-SHA256': contentHash,
+                    'X-PDF-SHA256': pdfHash
                 });
                 return res.end(pdfBuffer);
             } finally {
