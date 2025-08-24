@@ -179,30 +179,23 @@ Please moderate this round by:
 
 ${negotiationSummary}
 
-Return a cleanly formatted response that contains:
+Return results in TWO parts, in this exact order:
 
-1. An HTML code block:
-   - Start with <h1>Final ${this.topic} Agreement</h1>
-   - Use <p> elements for each numbered clause in the form <p><strong>1. Clause Title:</strong> Clause text.</p>
-   - Use <h2> subheadings where helpful.
-   - When listing bullet points, use <ul> and <li> with <strong> labels.
-   - Ensure the HTML is properly indented and valid.
+1) A fenced JSON block (```json ... ```), containing ONLY a single JSON object with this schema:
+{
+  "title": string,                          // Short title of the agreement
+  "clauses": [ { "title": string, "text": string } ], // 3-7 clear, actionable clauses
+  "principles": [ { "label": string, "text": string } ], // 3-6 guiding principles
+  "summary": string,                        // 1–3 sentence plain-text summary
+  "html": string                            // HTML rendering of the agreement body (optional; safe markup only)
+}
 
-2. A short plain-text summary (outside the code block) explaining how the agreement was reached.
+2) A fenced HTML block (```html ... ```), a readable HTML rendering of the agreement with headings and lists.
 
-Example structure:
-
-\`\`\`html
-<h1>Final ${this.topic} Agreement</h1>
-<p><strong>1. Clause Name:</strong> Clause details.</p>
-<p><strong>2. Clause Name:</strong> Clause details.</p>
-<h2>Guiding Principles</h2>
-<ul>
-  <li><strong>Principle:</strong> Explanation.</li>
-</ul>
-\`\`\`
-
-The agreement should be specific, fair, and implementable by both parties.`;
+Notes:
+- The JSON MUST be valid and parseable. Do not include trailing commas or comments.
+- Keep the HTML clean and consistent with the JSON content.
+- The agreement should be specific, fair, and implementable by both parties.`;
 
         try {
             const response = await openai.chat.completions.create({
@@ -215,7 +208,29 @@ The agreement should be specific, fair, and implementable by both parties.`;
                 temperature: 0.1
             });
 
-            return response.choices[0].message.content;
+            const raw = response.choices[0].message.content;
+
+            // Try to extract structured JSON from a fenced block
+            let structured = null;
+            try {
+                const jsonFence = raw.match(/```json\s*([\s\S]*?)```/i);
+                if (jsonFence && jsonFence[1]) {
+                    structured = JSON.parse(jsonFence[1]);
+                } else {
+                    // Fallback: attempt to parse first JSON-like substring
+                    const firstBrace = raw.indexOf('{');
+                    const lastBrace = raw.lastIndexOf('}');
+                    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                        const candidate = raw.slice(firstBrace, lastBrace + 1);
+                        structured = JSON.parse(candidate);
+                    }
+                }
+            } catch (e) {
+                // Leave structured as null if parsing fails
+                structured = null;
+            }
+
+            return { raw, structured };
         } catch (error) {
             console.error('Error generating final agreement:', error);
             throw error;
@@ -315,7 +330,8 @@ async function runNegotiation(sessionId) {
         negotiation.status = 'completed';
         
         return {
-            agreement: finalAgreement,
+            agreement: finalAgreement.raw,
+            structured: finalAgreement.structured || null,
             backchannel: backchannelInsights,
             rounds: moderator.negotiationRounds.length
         };
