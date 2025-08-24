@@ -15,6 +15,14 @@ try {
 
 // Create HTTP server for health checks and version info
 const server = http.createServer((req, res) => {
+    // Basic CORS for simple health/version endpoints
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        return res.end();
+    }
     if (req.url === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'healthy', connections: wss.clients.size }));

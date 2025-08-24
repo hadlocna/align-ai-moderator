@@ -740,6 +740,8 @@
                     break;
                 case 'negotiationComplete':
                     addDebugLog(`Received negotiation results from ${message.sender}`, 'success');
+                    // Stop polling when results arrive from partner
+                    stopNegotiationStatusPolling();
                     displayNegotiationResult(message.result);
                     break;
                 case 'ping':
@@ -1049,6 +1051,8 @@
             // Transition to waiting screen
             showScreen(waitingScreen);
             updateStepIndicator(2);
+            // Begin polling negotiation status so both users see progress
+            startNegotiationStatusPolling(sessionData.sessionId);
             
             addDebugLog('Private inputs submitted, waiting for partner...', 'info');
             showNotification('Inputs submitted! Waiting for your partner...', 'success');
@@ -1236,6 +1240,11 @@
         }
 
         function startNegotiationStatusPolling(sessionId) {
+            // Ensure we don't create duplicate timers
+            if (negotiationStatusInterval) {
+                clearInterval(negotiationStatusInterval);
+                negotiationStatusInterval = null;
+            }
             const statusUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? `http://localhost:3001/api/negotiation-status/${sessionId}`
                 : `https://align-ai-negotiation.onrender.com/api/negotiation-status/${sessionId}`;
@@ -1385,6 +1394,8 @@
         }
 
         function displayNegotiationResult(result) {
+            // Stop any active polling when displaying final results
+            stopNegotiationStatusPolling();
             const { html, summary } = formatAgreementContent(result.agreement);
             agreementDiv.innerHTML = html;
             if (summary) {
