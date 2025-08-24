@@ -187,12 +187,48 @@ Return results in TWO parts, in this exact order:
   "clauses": [ { "title": string, "text": string } ], // 3-7 clear, actionable clauses
   "principles": [ { "label": string, "text": string } ], // 3-6 guiding principles
   "summary": string,                        // 1–3 sentence plain-text summary
-  "html": string                            // HTML rendering of the agreement body (optional; safe markup only)
+  "html": string,                           // HTML rendering of the agreement body (optional; safe markup only)
+  "analytics": {                            // Negotiation Intelligence Dashboard data
+    "health": {
+      "fairnessIndex": number,              // 0-100; estimate equality + procedural fairness markers
+      "paretoEfficiency": number,           // 0-100; rough Pareto likelihood
+      "nashScore": number,                  // 0-100; normalized Nash product proxy
+      "claritySmart": number,               // 0-100; SMART/clarity score (who/what/when/if-then)
+      "implementability": number,           // 0-100; based on if-then, reminders, review
+      "objectiveCriteriaUsed": boolean      // reference to independent standards present
+    },
+    "interestsCoverage": {
+      "user1": [ { "need": string, "type": "mustHave"|"preference", "coverage": "full"|"partial"|"none" } ],
+      "user2": [ { "need": string, "type": "mustHave"|"preference", "coverage": "full"|"partial"|"none" } ],
+      "tradeOffEfficiency": number          // 0-100; linkage and package trades
+    },
+    "processStyle": {
+      "styleBlend": { "competing": number, "collaborating": number, "compromising": number, "avoiding": number, "accommodating": number },
+      "lsmPercent": number,                 // 0-100; linguistic style matching
+      "politeness": number,                 // 0-100
+      "emotionTone": string                 // e.g., Neutral/Positive
+    },
+    "tacticsBias": {
+      "firstOfferQuality": string,          // e.g., reasonable anchor / extreme anchor / range offer
+      "hardballTags": string[],             // e.g., deadline, brinkmanship
+      "objectiveCriteriaNotes": string
+    },
+    "concessions": {
+      "narrative": string,                  // plain-language summary of concession dynamics
+      "curvePoints": [ number ]             // optional; distance per round
+    },
+    "coach": {
+      "strength": string,
+      "opportunity": string,
+      "suggestion": string
+    },
+    "participants": { "user1": string, "user2": string }
+  }
 }
 
 2) A fenced HTML block (\`\`\`html ... \`\`\`), a readable HTML rendering of the agreement with headings and lists.
 
-Notes:
+Notes (grounded in research — fairness/justice, Pareto/Nash, SMART clarity, objective criteria, integrative trades, style/LSM, concession patterns, implementation-intentions):
 - The JSON MUST be valid and parseable. Do not include trailing commas or comments.
 - Keep the HTML clean and consistent with the JSON content.
 - The agreement should be specific, fair, and implementable by both parties.`;

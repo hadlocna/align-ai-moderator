@@ -256,6 +256,7 @@
                         <!-- Backchannel summary will appear here -->
                     </div>
                 </div>
+                <div id="dashboard" class="mt-8"></div>
                 <div class="text-center mt-8 space-x-4">
                     <button id="downloadPdfBtn" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-indigo-700 transition">Download PDF</button>
                     <button onclick="startOver()" class="bg-gray-200 text-gray-800 font-bold py-3 px-8 rounded-lg hover:bg-gray-300 transition">Start New Negotiation</button>
@@ -1629,6 +1630,153 @@
             updateStepIndicator(3);
             
             showNotification('AI negotiation complete!', 'success');
+
+            // Render Negotiation Intelligence Dashboard if analytics present
+            if (result.structured && result.structured.analytics) {
+                renderNegotiationDashboard(result.structured.analytics);
+            } else {
+                const dash = document.getElementById('dashboard');
+                if (dash) dash.innerHTML = '';
+            }
+        }
+
+        function renderNegotiationDashboard(analytics) {
+            const dash = document.getElementById('dashboard');
+            if (!dash) return;
+
+            const get = (obj, path, def=null) => {
+                try { return path.split('.').reduce((o,k)=>o&&o[k], obj) ?? def; } catch { return def; }
+            };
+
+            const u1 = get(analytics, 'participants.user1', sessionData.userName || 'User 1');
+            const u2 = get(analytics, 'participants.user2', partnerInputs?.userName || sessionData.partnerName || 'User 2');
+
+            const health = get(analytics, 'health', {});
+            const interests = get(analytics, 'interestsCoverage', {});
+            const style = get(analytics, 'processStyle', {});
+            const tactics = get(analytics, 'tacticsBias', {});
+            const concessions = get(analytics, 'concessions', {});
+            const coach = get(analytics, 'coach', {});
+
+            const dials = [
+                { label: 'Fairness Index', percent: Math.round(health.fairnessIndex || 0), color: '#22c55e' },
+                { label: 'Pareto Efficiency', percent: Math.round(health.paretoEfficiency || 0), color: '#22c55e' },
+                { label: 'Clarity (SMART)', percent: Math.round(health.claritySmart || 0), color: '#22c55e' },
+                { label: 'Implementability', percent: Math.round(health.implementability || 0), color: '#f59e0b' }
+            ];
+
+            const interestsList = (arr=[]) => arr.map(item => `
+                <li class="bg-slate-100 border-l-4 ${item.coverage==='full' ? 'border-green-500' : item.coverage==='partial' ? 'border-amber-500' : 'border-slate-300'} p-3 rounded-r-md text-sm">
+                    ${item.need} ${item.type==='mustHave' ? '<span class="ml-2 text-xs font-semibold text-slate-600">(Non-negotiable)</span>' : ''}
+                </li>`).join('');
+
+            const styleBar = (label, pct, color) => `
+                <div class="grid grid-cols-4 items-center gap-4 text-sm">
+                  <div class="col-span-1 font-medium text-slate-600">${label}</div>
+                  <div class="col-span-3">
+                    <div class="w-full bg-slate-200 rounded-full h-6">
+                      <div class="h-6 rounded-full flex items-center justify-center text-white font-semibold text-xs" style="width:${Math.max(0,Math.min(100,Math.round(pct||0)))}%; background:${color};">${Math.round(pct||0)}%</div>
+                    </div>
+                  </div>
+                </div>`;
+
+            dash.innerHTML = `
+            <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+              <h2 class="text-2xl font-bold text-slate-900">Negotiation Intelligence Dashboard</h2>
+              <div class="text-sm text-slate-500 mt-1">Agreement: <span class="font-medium text-slate-700">${sessionData.topic || ''}</span> • Participants: <span class="font-medium text-slate-700">${u1} & ${u2}</span></div>
+            </div>
+
+            <div class="grid grid-cols-12 gap-6 mt-6">
+              <section class="col-span-12 lg:col-span-6 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="text-lg font-semibold text-slate-900 mb-6">Agreement Health (At-a-Glance)</h3>
+                <div id="health-dials" class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center"></div>
+                <div class="mt-4 text-sm text-slate-600">Objective Criteria: <span class="font-semibold ${health.objectiveCriteriaUsed ? 'text-green-600' : 'text-slate-700'}">${health.objectiveCriteriaUsed ? 'Present' : 'Not detected'}</span></div>
+              </section>
+
+              <section class="col-span-12 lg:col-span-6 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="text-lg font-semibold text-slate-900 mb-6">Interests Coverage Map</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 class="font-semibold text-center mb-3 text-slate-800">${u1}'s Interests</h4>
+                    <ul class="space-y-2">${interestsList(interests.user1)}</ul>
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-center mb-3 text-slate-800">${u2}'s Interests</h4>
+                    <ul class="space-y-2">${interestsList(interests.user2)}</ul>
+                  </div>
+                </div>
+              </section>
+
+              <section class="col-span-12 xl:col-span-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="text-lg font-semibold text-slate-900 mb-6">Process & Style Analytics</h3>
+                <div class="space-y-4">
+                  ${styleBar('Collaborating', (style.styleBlend?.collaborating)||0, '#22c55e')}
+                  ${styleBar('Linguistic Match', style.lsmPercent||0, '#3b82f6')}
+                  ${styleBar('Politeness', style.politeness||0, '#3b82f6')}
+                  ${styleBar('Emotional Stability', 100, '#64748b')}
+                </div>
+              </section>
+
+              <section class="col-span-12 xl:col-span-4 bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-xl shadow-sm">
+                <h3 class="text-lg font-semibold text-blue-800 mb-4">Coach's Corner</h3>
+                <div class="text-sm text-blue-900 space-y-3">
+                  ${coach.strength ? `<p><strong class="font-semibold">Strength:</strong> ${coach.strength}</p>` : ''}
+                  ${coach.opportunity ? `<p><strong class="font-semibold">Opportunity:</strong> ${coach.opportunity}</p>` : ''}
+                  ${coach.suggestion ? `<p class="bg-blue-100 p-3 rounded-md"><strong class="font-semibold">Suggestion:</strong> <em>${coach.suggestion}</em></p>` : ''}
+                </div>
+              </section>
+
+              <section class="col-span-12 md:col-span-6 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="text-lg font-semibold text-slate-900 mb-4">Tactics & Bias Scanner</h3>
+                <ul class="space-y-3 text-sm list-disc list-inside text-slate-700">
+                  ${tactics.firstOfferQuality ? `<li><strong>First Offer Quality:</strong> ${tactics.firstOfferQuality}</li>` : ''}
+                  ${Array.isArray(tactics.hardballTags) && tactics.hardballTags.length ? `<li><strong>Hardball Tactics:</strong> ${tactics.hardballTags.join(', ')}</li>` : '<li><strong>Hardball Tactics:</strong> None detected</li>'}
+                  ${tactics.objectiveCriteriaNotes ? `<li><strong>Objective Criteria:</strong> ${tactics.objectiveCriteriaNotes}</li>` : ''}
+                </ul>
+              </section>
+
+              <section class="col-span-12 md:col-span-6 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="text-lg font-semibold text-slate-900 mb-4">Concession Dynamics</h3>
+                <p class="text-sm text-slate-600 mb-4">${concessions.narrative || 'Convergence narrative unavailable.'}</p>
+                <div class="relative h-40">
+                  <svg width="100%" height="100%" viewBox="0 0 300 150" preserveAspectRatio="none">
+                    <path d="M 10,20 C 100,25 200,60 290,75" stroke="#3b82f6" stroke-width="3" fill="none" stroke-dasharray="5,5" />
+                    <path d="M 10,130 C 100,125 200,90 290,75" stroke="#22c55e" stroke-width="3" fill="none" stroke-dasharray="5,5" />
+                    <circle cx="290" cy="75" r="6" fill="#1e293b" />
+                    <text x="15" y="15" class="text-xs font-semibold" fill="#3b82f6">${u1}'s Position</text>
+                    <text x="15" y="145" class="text-xs font-semibold" fill="#22c55e">${u2}'s Position</text>
+                    <text x="240" y="65" class="text-xs font-semibold" fill="#1e293b">Agreement</text>
+                  </svg>
+                </div>
+              </section>
+            </div>`;
+
+            // Render health dials
+            const dialsContainer = document.getElementById('health-dials');
+            if (dialsContainer) {
+                dialsContainer.innerHTML = '';
+                dials.forEach(metric => {
+                    const dialWrapper = document.createElement('div');
+                    dialWrapper.className = 'flex flex-col items-center gap-2 group relative';
+                    const dialElement = document.createElement('div');
+                    dialElement.className = 'dial w-24 h-24 rounded-full flex items-center justify-center text-2xl font-bold transition-transform duration-300 group-hover:scale-110';
+                    dialElement.style.setProperty('--dial-percent', metric.percent);
+                    dialElement.style.setProperty('--dial-color', metric.color);
+                    dialElement.style.color = metric.color;
+                    dialElement.setAttribute('role', 'progressbar');
+                    dialElement.setAttribute('aria-valuenow', metric.percent);
+                    dialElement.setAttribute('aria-valuemin', '0');
+                    dialElement.setAttribute('aria-valuemax', '100');
+                    dialElement.setAttribute('aria-label', metric.label);
+                    dialElement.textContent = metric.percent;
+                    const labelElement = document.createElement('div');
+                    labelElement.className = 'text-sm font-medium text-slate-600';
+                    labelElement.textContent = metric.label;
+                    dialWrapper.appendChild(dialElement);
+                    dialWrapper.appendChild(labelElement);
+                    dialsContainer.appendChild(dialWrapper);
+                });
+            }
         }
 
         async function runMockNegotiation() {
