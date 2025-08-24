@@ -1393,19 +1393,191 @@
             return { html, summary };
         }
 
+        function parseAgreementStructured(raw) {
+            // Extract optional summary block
+            const summaryMatch = raw.match(/Plain-text summary:\s*([\s\S]*)/i);
+            let summary = '';
+            let text = raw;
+            if (summaryMatch) {
+                summary = (summaryMatch[1] || '').trim();
+                text = raw.slice(0, summaryMatch.index).trim();
+            }
+
+            // If the agreement is inside a code fence, prefer that
+            const codeMatch = text.match(/```(?:html)?\n([\s\S]*?)```/i);
+            if (codeMatch) {
+                text = codeMatch[1].trim();
+            }
+
+            const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            const clauses = [];
+            const principles = [];
+            let collectingPrinciples = false;
+
+            for (const line of lines) {
+                // Detect section switches
+                if (/^Guiding Principles/i.test(line)) {
+                    collectingPrinciples = true;
+                    continue;
+                }
+
+                // Numbered clause e.g. "1. Title: body"
+                const clauseMatch = line.match(/^(\d+)\.\s*(.+)$/);
+                if (clauseMatch) {
+                    const rest = clauseMatch[2];
+                    let title = '';
+                    let body = rest;
+                    const idx = rest.indexOf(':');
+                    if (idx !== -1) {
+                        title = rest.slice(0, idx).trim();
+                        body = rest.slice(idx + 1).trim();
+                    }
+                    clauses.push({ number: parseInt(clauseMatch[1], 10), title, body });
+                    continue;
+                }
+
+                // Bullet or "Label: value" lines inside principles
+                if (collectingPrinciples) {
+                    const principleMatch = line.match(/^([A-Za-z ]+):\s*(.+)$/);
+                    if (principleMatch) {
+                        principles.push({ label: principleMatch[1].trim(), text: principleMatch[2].trim() });
+                        continue;
+                    }
+                }
+            }
+
+            return { clauses, principles, summary };
+        }
+
+        function renderPrettyAgreement(result) {
+            // Build a styled agreement using Tailwind classes, based on parsed content
+            const { clauses, principles, summary } = parseAgreementStructured(result.agreement || '');
+            agreementDiv.innerHTML = '';
+
+            // Subtitle (topic)
+            const subtitle = document.createElement('p');
+            subtitle.className = 'text-base sm:text-lg text-slate-500 mt-1 mb-6';
+            subtitle.textContent = `Final Agreement: ${sessionData.topic || 'Agreement'}`;
+            agreementDiv.appendChild(subtitle);
+
+            // Clauses list
+            if (clauses.length) {
+                const section = document.createElement('section');
+                const ol = document.createElement('ol');
+                ol.className = 'space-y-5 text-slate-700';
+                clauses.sort((a,b) => a.number - b.number).forEach(c => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-start';
+                    const badge = document.createElement('span');
+                    badge.className = 'bg-blue-100 text-blue-800 text-sm font-bold rounded-full h-6 w-6 flex items-center justify-center mr-4 mt-1 flex-shrink-0';
+                    badge.textContent = String(c.number);
+                    const body = document.createElement('div');
+                    if (c.title) {
+                        const strong = document.createElement('strong');
+                        strong.className = 'font-semibold text-slate-900';
+                        strong.textContent = c.title + ': ';
+                        body.appendChild(strong);
+                    }
+                    body.appendChild(document.createTextNode(c.body || ''));
+                    li.appendChild(badge);
+                    li.appendChild(body);
+                    ol.appendChild(li);
+                });
+                section.appendChild(ol);
+                agreementDiv.appendChild(section);
+            }
+
+            // Guiding Principles
+            if (principles.length) {
+                const gp = document.createElement('section');
+                gp.className = 'mt-10 pt-8 border-t border-slate-200';
+                const h2 = document.createElement('h2');
+                h2.className = 'text-xl sm:text-2xl font-bold text-slate-800 mb-5';
+                h2.textContent = 'Guiding Principles';
+                gp.appendChild(h2);
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-slate-700';
+                principles.forEach(p => {
+                    const pEl = document.createElement('p');
+                    const strong = document.createElement('strong');
+                    strong.className = 'font-semibold text-slate-900';
+                    strong.textContent = (p.label || '') + ': ';
+                    pEl.appendChild(strong);
+                    pEl.appendChild(document.createTextNode(p.text || ''));
+                    grid.appendChild(pEl);
+                });
+                gp.appendChild(grid);
+                agreementDiv.appendChild(gp);
+            }
+
+            // Summary
+            if (summary) {
+                const sum = document.createElement('section');
+                sum.className = 'mt-10';
+                const box = document.createElement('div');
+                box.className = 'bg-slate-50 border border-slate-200 rounded-lg p-6';
+                const p = document.createElement('p');
+                p.className = 'text-slate-600 italic';
+                p.textContent = summary;
+                box.appendChild(p);
+                sum.appendChild(box);
+                agreementDiv.appendChild(sum);
+            }
+
+            // Footer with seal and metadata
+            const footer = document.createElement('footer');
+            footer.className = 'bg-slate-100 px-6 py-5 sm:px-10 sm:py-6 border border-slate-200 rounded-lg mt-8';
+            const wrap = document.createElement('div');
+            wrap.className = 'flex flex-col sm:flex-row items-center justify-between';
+
+            const left = document.createElement('div');
+            left.className = 'flex items-center';
+            const img = document.createElement('img');
+            img.src = 'Align Certified.png';
+            img.alt = 'Align Certified Seal';
+            img.className = 'w-16 h-16 mr-4';
+            img.onerror = function () { this.style.display = 'none'; };
+            const meta = document.createElement('div');
+            const p1 = document.createElement('p');
+            p1.className = 'font-bold text-blue-800 text-lg';
+            p1.textContent = 'Align Certified Agreement';
+            const p2 = document.createElement('p');
+            p2.className = 'text-sm text-slate-500';
+            const dateStr = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+            p2.textContent = `Certified on: ${dateStr}`;
+            meta.appendChild(p1); meta.appendChild(p2);
+            left.appendChild(img); left.appendChild(meta);
+
+            const right = document.createElement('div');
+            right.className = 'mt-4 sm:mt-0 text-sm text-slate-400';
+            right.textContent = `Unique Agreement ID: ${sessionData.sessionId || '—'}`;
+
+            wrap.appendChild(left); wrap.appendChild(right);
+            footer.appendChild(wrap);
+            agreementDiv.appendChild(footer);
+        }
+
         function displayNegotiationResult(result) {
             // Stop any active polling when displaying final results
             stopNegotiationStatusPolling();
-            const { html, summary } = formatAgreementContent(result.agreement);
-            agreementDiv.innerHTML = html;
-            if (summary) {
-                const summaryEl = document.createElement('p');
-                summaryEl.className = 'mt-4 text-sm italic text-gray-600';
-                summaryEl.textContent = summary;
-                agreementDiv.appendChild(summaryEl);
-            }
-            backchannelDiv.innerHTML = '';
 
+            // Render pretty agreement; if parsing yields nothing, fall back
+            const beforeHTML = agreementDiv.innerHTML;
+            renderPrettyAgreement(result);
+            if (!agreementDiv.textContent || agreementDiv.textContent.trim().length === 0) {
+                // Fallback to original formatting if something went wrong
+                const { html, summary } = formatAgreementContent(result.agreement);
+                agreementDiv.innerHTML = html;
+                if (summary) {
+                    const summaryEl = document.createElement('p');
+                    summaryEl.className = 'mt-4 text-sm italic text-gray-600';
+                    summaryEl.textContent = summary;
+                    agreementDiv.appendChild(summaryEl);
+                }
+            }
+
+            backchannelDiv.innerHTML = '';
+            
             result.backchannel.forEach(item => {
                 const details = document.createElement('details');
                 details.className = 'p-2 bg-gray-100 rounded-md mb-2';
@@ -1528,27 +1700,103 @@
             const agreementCard = document.querySelector('#resultsScreen > div:first-child');
             if (!agreementCard) return;
 
-            const canvas = await html2canvas(agreementCard, { scale: 2 });
-            const imgData = canvas.toDataURL('image/png');
+            // Capture agreement card at high resolution
+            const canvas = await html2canvas(agreementCard, { scale: 2, backgroundColor: '#FFFFFF' });
 
             const pdf = new jsPDF('p', 'pt', 'letter');
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 54; // 0.75in margin
 
+            // Try to load watermark; continue if it fails
             const watermark = new Image();
-            watermark.src = 'align-certified-watermark.png';
-            await new Promise(resolve => watermark.onload = resolve);
-            const wmWidth = pageWidth * 0.6;
-            const wmHeight = watermark.height / watermark.width * wmWidth;
-            pdf.setGState(new pdf.GState({ opacity: 0.1 }));
-            pdf.addImage(watermark, 'PNG', (pageWidth - wmWidth) / 2, (pageHeight - wmHeight) / 2, wmWidth, wmHeight);
-            pdf.setGState(new pdf.GState({ opacity: 1 }));
+            // File exists at project root as "Align Certified.png" (space must be URL-encoded)
+            watermark.src = 'Align%20Certified.png';
+            const watermarkLoaded = await new Promise(resolve => {
+                watermark.onload = () => resolve(true);
+                watermark.onerror = () => resolve(false);
+            });
 
-            const imgProps = pdf.getImageProperties(imgData);
-            const ratio = Math.min(pageWidth / imgProps.width, (pageHeight - 80) / imgProps.height);
-            const pdfWidth = imgProps.width * ratio;
-            const pdfHeight = imgProps.height * ratio;
-            pdf.addImage(imgData, 'PNG', (pageWidth - pdfWidth) / 2, 40, pdfWidth, pdfHeight);
+            // Calculate slicing for multipage output
+            const fullWidthPx = canvas.width;
+            const fullHeightPx = canvas.height;
+            const targetWidthPt = pageWidth - margin * 2;
+            const pxToPtRatio = targetWidthPt / fullWidthPx; // points per pixel
+            const targetHeightPt = pageHeight - margin * 2;
+            const sliceHeightPx = Math.floor(targetHeightPt / pxToPtRatio);
+
+            let offsetY = 0;
+            let pageIndex = 0;
+            while (offsetY < fullHeightPx) {
+                const remainingPx = fullHeightPx - offsetY;
+                const currentSlicePx = Math.min(sliceHeightPx, remainingPx);
+
+                // Create a slice canvas
+                const sliceCanvas = document.createElement('canvas');
+                sliceCanvas.width = fullWidthPx;
+                sliceCanvas.height = currentSlicePx;
+                const ctx = sliceCanvas.getContext('2d');
+                ctx.drawImage(
+                    canvas,
+                    0, offsetY, fullWidthPx, currentSlicePx,
+                    0, 0, fullWidthPx, currentSlicePx
+                );
+
+                const sliceData = sliceCanvas.toDataURL('image/png');
+                const sliceHeightPt = currentSlicePx * pxToPtRatio;
+
+                if (pageIndex > 0) pdf.addPage();
+
+                // Add content slice
+                pdf.addImage(
+                    sliceData,
+                    'PNG',
+                    margin,
+                    margin,
+                    targetWidthPt,
+                    sliceHeightPt
+                );
+
+                // Overlay watermark above content so it’s visible
+                if (watermarkLoaded) {
+                    const wmMaxWidthPt = pageWidth * 0.7;
+                    const wmAspect = watermark.height / watermark.width;
+                    const wmWidthPt = wmMaxWidthPt;
+                    const wmHeightPt = wmWidthPt * wmAspect;
+                    const wmX = (pageWidth - wmWidthPt) / 2;
+                    const wmY = (pageHeight - wmHeightPt) / 2;
+                    pdf.setGState(new pdf.GState({ opacity: 0.1 }));
+                    pdf.addImage(watermark, 'PNG', wmX, wmY, wmWidthPt, wmHeightPt);
+                    pdf.setGState(new pdf.GState({ opacity: 1 }));
+                }
+
+                // Footer with page numbers
+                const pageCountSoFar = pdf.getNumberOfPages();
+                pdf.setFontSize(9);
+                pdf.setTextColor(120);
+                pdf.text(
+                    `Page ${pageIndex + 1} of ${Math.ceil(fullHeightPx / sliceHeightPx)}`,
+                    pageWidth - margin,
+                    pageHeight - 20,
+                    { align: 'right' }
+                );
+
+                offsetY += currentSlicePx;
+                pageIndex++;
+            }
+
+            // PDF metadata
+            try {
+                pdf.setProperties({
+                    title: 'Align Certified Agreement',
+                    subject: (sessionData && sessionData.topic) ? sessionData.topic : 'Agreement',
+                    author: 'Align',
+                    creator: 'Align',
+                    keywords: 'Agreement, Align, Certified'
+                });
+            } catch (e) {
+                // ignore metadata errors
+            }
 
             pdf.save('agreement.pdf');
         }
