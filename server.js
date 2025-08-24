@@ -2,6 +2,10 @@ const WebSocket = require('ws');
 const http = require('http');
 const { execSync } = require('child_process');
 const { version: pkgVersion } = require('./package.json');
+const fs = require('fs');
+const path = require('path');
+
+let puppeteer = null; // Lazy-load to avoid crashing if not installed
 
 // Determine application version from git commit count
 let appVersion = pkgVersion;
@@ -13,8 +17,8 @@ try {
     console.error('Could not determine app version from git:', err);
 }
 
-// Create HTTP server for health checks and version info
-const server = http.createServer((req, res) => {
+// Create HTTP server for health checks, version info, and PDF generation
+const server = http.createServer(async (req, res) => {
     // Basic CORS for simple health/version endpoints
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -29,6 +33,109 @@ const server = http.createServer((req, res) => {
     } else if (req.url === '/version') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ version: appVersion }));
+    } else if (req.url.startsWith('/api/pdf/agreement') && req.method === 'POST') {
+        try {
+            // Collect JSON body
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            await new Promise(resolve => req.on('end', resolve));
+
+            let payload = {};
+            try { payload = JSON.parse(body || '{}'); } catch (e) {}
+
+            const {
+                html = '<p>No content</p>',
+                title = 'Align Certified Agreement',
+                topic = 'Agreement',
+                filename = 'agreement.pdf'
+            } = payload || {};
+
+            // Resolve watermark file - prefer group/ path if present
+            const rootDir = __dirname;
+            const candidatePaths = [
+                path.join(rootDir, 'group', 'Align Certified.png'),
+                path.join(rootDir, 'Align Certified.png')
+            ];
+            let watermarkDataUrl = '';
+            for (const p of candidatePaths) {
+                if (fs.existsSync(p)) {
+                    const b64 = fs.readFileSync(p).toString('base64');
+                    watermarkDataUrl = `data:image/png;base64,${b64}`;
+                    break;
+                }
+            }
+
+            // Lazy import puppeteer
+            if (!puppeteer) {
+                try {
+                    puppeteer = require('puppeteer');
+                } catch (e) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: 'Puppeteer not installed' }));
+                }
+            }
+
+            const browser = await puppeteer.launch({
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            });
+            try {
+                const page = await browser.newPage();
+                const docHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    @page { size: Letter; margin: 0.75in; }
+    body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #111827; }
+    h1,h2,h3 { margin: 0 0 8px 0; }
+    p { line-height: 1.5; }
+    .header { text-align: center; margin-bottom: 12px; }
+    .topic { font-size: 20px; font-weight: 700; color: #1f2937; }
+    .container { position: relative; }
+    .watermark { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0.1; }
+    .watermark img { max-width: 70%; transform: rotate(-25deg); filter: grayscale(100%); }
+    .content { position: relative; z-index: 1; }
+    .footer { position: fixed; bottom: 0.4in; left: 0.75in; right: 0.75in; font-size: 10px; color: #6b7280; display: flex; justify-content: flex-end; }
+  </style>
+  </head>
+  <body>
+    <div class="container">
+      ${watermarkDataUrl ? `<div class="watermark"><img src="${watermarkDataUrl}" alt="watermark" /></div>` : ''}
+      <div class="content">
+        <div class="header">
+          <div class="topic">${escapeHtml(topic)}</div>
+          <div style="height:8px"></div>
+          <div style="height:1px;background:#e5e7eb"></div>
+        </div>
+        ${html}
+      </div>
+    </div>
+    <div class="footer">Align • Certified Agreement</div>
+  </body>
+</html>`;
+
+                await page.setContent(docHtml, { waitUntil: 'networkidle0' });
+                const pdfBuffer = await page.pdf({
+                    format: 'Letter',
+                    printBackground: true,
+                    margin: { top: '0.75in', bottom: '0.75in', left: '0.75in', right: '0.75in' }
+                });
+
+                res.writeHead(200, {
+                    'Content-Type': 'application/pdf',
+                    'Content-Disposition': `attachment; filename="${sanitizeFilename(filename || `Agreement_${slugify(topic)}.pdf`)}"`
+                });
+                return res.end(pdfBuffer);
+            } finally {
+                await browser.close();
+            }
+        } catch (err) {
+            console.error('PDF generation error', err);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Failed to generate PDF', details: String(err && err.message || err) }));
+        }
     } else {
         res.writeHead(404);
         res.end('Not Found');
@@ -316,3 +423,24 @@ if (require.main === module) {
 
 // Export server and wss for testing
 module.exports = { server, wss, sessions };
+
+// Helpers
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function sanitizeFilename(name) {
+    return String(name || 'file.pdf').replace(/[^a-zA-Z0-9_.-]/g, '_');
+}
+
+function slugify(str) {
+    return String(str || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
