@@ -238,7 +238,8 @@ Notes (grounded in research — fairness/justice, Pareto/Nash, SMART clarity, ob
                     { role: 'user', content: prompt }
                 ],
                 max_tokens: 1000,
-                temperature: 0.1
+                temperature: 0.1,
+                response_format: { type: 'json_object' }
             });
 
             const raw = response.choices[0].message.content || '';
@@ -326,7 +327,8 @@ Core interests & priorities:\n${objectives || '(none)'}\n\nNon-negotiables & bou
                 { role: 'user', content: user }
             ],
             temperature: 0.2,
-            max_tokens: 500
+            max_tokens: 500,
+            response_format: { type: 'json_object' }
         });
 
         const raw = rsp.choices?.[0]?.message?.content || '';
@@ -336,8 +338,25 @@ Core interests & priorities:\n${objectives || '(none)'}\n\nNon-negotiables & bou
             if (fence) parsed = JSON.parse(fence[1]);
             else parsed = JSON.parse(raw);
         } catch (e) {
-            // fallback minimal object
-            parsed = { overall: 'Consider clarifying each section using concrete, time-bound language.' };
+            // Fallback richer object to avoid empty panels
+            parsed = {
+                overall: 'Consider clarifying each section using concrete, time-bound language tied to objective criteria.',
+                objectives: {
+                    feedback: 'Make motivations explicit and connect to fairness/recognition/downtime.',
+                    suggestions: ['Add a timeframe (e.g., nightly, weekend split).', 'Note desired predictability.'],
+                    rewrite: inputs.objectives || 'My core interests are an equitable workload, recognition of contributions, and predictable downtime.'
+                },
+                mustHaves: {
+                    feedback: 'Phrase boundaries as positive standards (e.g., clean before bed).',
+                    suggestions: ['Avoid absolute language where swaps could work.', 'Include cook’s exemption if applicable.'],
+                    rewrite: inputs.mustHaves || 'Boundaries: nightly cleanliness; alternate responsibility so no one is overloaded.'
+                },
+                constraints: {
+                    feedback: 'List objective facts (hours, who cooks, typical schedules) to anchor fairness.',
+                    suggestions: ['Include weekly hours per person.', 'Specify who cooks and when.'],
+                    rewrite: inputs.constraints || 'I work ~50 hours/week; partner ~40. Whoever cooks is exempt from dishes that night.'
+                }
+            };
         }
 
         res.json({ success: true, feedback: parsed });

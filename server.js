@@ -7,15 +7,35 @@ const path = require('path');
 
 let puppeteer = null; // Lazy-load to avoid crashing if not installed
 
-// Determine application version from git commit count
-let appVersion = pkgVersion;
-try {
-    const commitCount = execSync('git rev-list --count HEAD').toString().trim();
-    const [major = '0', minor = '0'] = pkgVersion.split('.');
-    appVersion = `${major}.${minor}.${commitCount}`;
-} catch (err) {
-    console.error('Could not determine app version from git:', err);
+// Determine application version from git or CI env vars
+function computeAppVersion() {
+    const [major = '0', minor = '0', patch = '0'] = String(pkgVersion).split('.');
+    // 1) Prefer git commit count when available
+    try {
+        const commitCount = execSync('git rev-list --count HEAD').toString().trim();
+        if (commitCount) return `${major}.${minor}.${commitCount}`;
+    } catch (_) {
+        // ignore
+    }
+    // 2) Use CI-provided commit SHA as build metadata
+    const sha = (process.env.RENDER_GIT_COMMIT
+        || process.env.VERCEL_GIT_COMMIT_SHA
+        || process.env.HEROKU_SLUG_COMMIT
+        || process.env.SOURCE_VERSION
+        || process.env.GIT_COMMIT
+        || process.env.COMMIT_SHA
+        || '').trim();
+    const shortSha = sha ? sha.slice(0, 7) : '';
+    if (shortSha) {
+        // SemVer with build metadata ensures a visible change per push
+        return `${major}.${minor}.${patch}+${shortSha}`;
+    }
+    // 3) Fallback to pkg version with startup timestamp to avoid caching stale label
+    const ts = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 12); // yyyymmddHHMM
+    return `${major}.${minor}.${patch}+${ts}`;
 }
+
+const appVersion = computeAppVersion();
 
 // Create HTTP server for health checks, version info, and PDF generation
 const server = http.createServer(async (req, res) => {
@@ -31,7 +51,13 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'healthy', connections: wss.clients.size }));
     } else if (req.url === '/version') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'Surrogate-Control': 'no-store'
+        });
         res.end(JSON.stringify({ version: appVersion }));
     } else if (req.url.startsWith('/api/pdf/agreement') && req.method === 'POST') {
         try {
