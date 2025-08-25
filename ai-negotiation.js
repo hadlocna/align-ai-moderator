@@ -25,7 +25,7 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-chat-latest';
 const activeNegotiations = new Map();
 
 class AIAdvocate {
-    constructor(userName, userInputs, topic) {
+  constructor(userName, userInputs, topic) {
         this.userName = userName;
         this.objectives = userInputs.objectives;
         this.mustHaves = userInputs.mustHaves;
@@ -34,7 +34,7 @@ class AIAdvocate {
         this.negotiationHistory = [];
     }
 
-    getSystemPrompt() {
+  getSystemPrompt() {
         return `You are an AI advocate speaking as ${this.userName} in a private negotiation about: "${this.topic}".
 
 PRIVATE NOTES ABOUT YOUR SITUATION (CONFIDENTIAL):
@@ -56,6 +56,12 @@ COMMUNICATION STYLE:
 - Propose specific, actionable solutions
 - Ask clarifying questions when needed
 
+GROUNDING AND INPUT QUALITY:
+- Your proposals must be explicitly grounded in the private notes. If the notes are vague, contradictory, off-topic, or clearly placeholder/nonsense (e.g., random characters, repeated punctuation), treat them as low-confidence.
+- In low-confidence cases, do NOT fabricate specifics. Prefer asking up to 3 targeted clarifying questions that would enable a concrete proposal. Keep questions minimal and actionable.
+- When you do make a proposal, explicitly cite which parts of the notes your proposal relies on (e.g., "Grounding: from objectives …, must‑haves …, constraints …").
+- If there is insufficient information to propose concrete commitments, say so and propose the smallest next information request needed to proceed.
+
 Remember: The other party also has an AI advocate fighting hard for their person's perspective. Work together to find a solution acceptable to both sides.`;
     }
 
@@ -65,18 +71,18 @@ Remember: The other party also has an AI advocate fighting hard for their person
         }
 
         const prompt = context 
-            ? `Based on the discussion so far: ${context}\n\nGenerate your next proposal or response:`
-            : 'Generate your opening proposal for this negotiation:';
+            ? `Based on the discussion so far: ${context}\n\nGenerate your next response following the required format below.`
+            : 'Generate your opening response following the required format below.';
 
         try {
             const response = await openai.chat.completions.create({
                 model: OPENAI_MODEL,
                 messages: [
                     { role: 'system', content: this.getSystemPrompt() },
-                    { role: 'user', content: prompt }
+                    { role: 'user', content: `${prompt}\n\nRESPONSE FORMAT (plain text):\n1) Grounding: Briefly cite the specific notes you are relying on (objectives / must‑haves / constraints).\n2) If insufficient information: list up to 3 Clarifying Questions and stop.\n3) Otherwise, Proposal: 2–5 concrete, implementable points that strictly align with the cited notes.\n4) Open Points: unknowns or items needing partner input.\nRules: Do not invent facts beyond the notes/topic. If notes are nonsense or empty, prefer Clarifying Questions over proposals.` }
                 ],
                 max_tokens: 300,
-                temperature: 0.7
+                temperature: 0.5
             });
 
             const proposal = response.choices[0].message.content;
@@ -118,7 +124,12 @@ Key principles:
 - Focus only on what is shared in the conversation
 - Synthesize the best elements from both sides
 
-The negotiation should result in a clear, actionable agreement that both people can accept.`;
+The negotiation should result in a clear, actionable agreement that both people can accept.
+
+Input Sufficiency and Grounding:
+- If either advocate's message is not clearly grounded in their private notes, contains placeholder/nonsense, or lacks the why/specificity/objective criteria, request clarifying information instead of pushing toward an agreement.
+- Never invent facts. Label unknowns and specify what is needed.
+- Only allow moving to a final agreement when inputs are sufficiently specific and compatible; otherwise continue with targeted clarification.`;
     }
 
     async moderateRound(proposal1, proposal2) {
@@ -137,7 +148,7 @@ Please moderate this round by:
 1. Identifying key points from each side
 2. Finding areas of potential agreement
 3. Suggesting next steps or compromises
-4. Determining if we're ready for a final agreement
+4. Determining if input sufficiency is met; if not, explicitly state "Insufficient information" and list the minimal clarifying questions needed before proceeding. Do not fabricate details.
 `;
 
         try {
@@ -175,7 +186,7 @@ Please moderate this round by:
             .map((round, index) => `Round ${index + 1}:\n- ${this.advocate1.userName}: ${round.proposal1}\n- ${this.advocate2.userName}: ${round.proposal2}\n- Moderator: ${round.moderation}`)
             .join('\n\n');
 
-        const prompt = `Based on the complete negotiation below, draft the final agreement.
+        const prompt = `Based on the complete negotiation below, decide whether there is enough specific, compatible information to draft a final agreement. If not, do NOT draft an agreement. Instead, return a brief plain-text message that begins with "Insufficient information to produce an agreement." and list the top 3 missing details needed. Do not invent facts.
 
 ${negotiationSummary}
 
@@ -238,8 +249,7 @@ Notes (grounded in research — fairness/justice, Pareto/Nash, SMART clarity, ob
                     { role: 'user', content: prompt }
                 ],
                 max_tokens: 1000,
-                temperature: 0.1,
-                response_format: { type: 'json_object' }
+                temperature: 0.1
             });
 
             const raw = response.choices[0].message.content || '';
@@ -283,88 +293,6 @@ Notes (grounded in research — fairness/justice, Pareto/Nash, SMART clarity, ob
 
 // API Endpoints
 
-// Provide coaching/feedback on a single user's inputs before negotiation
-app.post('/api/input-feedback', async (req, res) => {
-    try {
-        const { topic, userName = 'User', inputs = {} } = req.body || {};
-        const { objectives = '', mustHaves = '', constraints = '' } = inputs;
-
-        // If OpenAI not configured, return a lightweight mock to keep UX unblocked
-        if (!openai) {
-            return res.json({
-                success: true,
-                feedback: {
-                    overall: 'Consider making each point specific and measurable. Tie boundaries to objective criteria (e.g., schedules, who cooks).',
-                    objectives: {
-                        feedback: 'Clarify what “equitable” means in practice (e.g., alternating nights, weekend split).',
-                        suggestions: ['Add timeframe (e.g., before bed).', 'Mention recognition/visibility if important.'],
-                        rewrite: objectives ? objectives : 'My core interests are an equitable workload, feeling recognized, and preserving predictable downtime.'
-                    },
-                    mustHaves: {
-                        feedback: 'Phrase boundaries as positive commitments. Include triggers (e.g., “if one cooks, the other does dishes”).',
-                        suggestions: ['Use “must/should” vs. “never/always”.', 'Tie to a nightly cleanliness standard.'],
-                        rewrite: mustHaves ? mustHaves : 'Boundaries: the kitchen is clean before bed; rotate duties so one person is not overloaded.'
-                    },
-                    constraints: {
-                        feedback: 'List objective facts (hours, who cooks, deadlines). These become fair standards.',
-                        suggestions: ['Include weekly hours per person.', 'Identify typical cooking nights or late shifts.'],
-                        rewrite: constraints ? constraints : 'I work ~50 hours/week; partner ~40. Whoever cooks is exempt from dishes that night.'
-                    }
-                }
-            });
-        }
-
-        const system = `You are a negotiation coach helping ${userName} prepare private inputs for a negotiation about: "${topic || 'the topic'}".
-Return actionable, constructive feedback in JSON (no prose) with keys: overall, objectives{feedback,suggestions[],rewrite}, mustHaves{...}, constraints{...}. Use SMART and objective-criteria principles. Keep tone supportive and specific.`;
-
-        const user = `Inputs from ${userName} (reframed fields):\n
-Core interests & priorities:\n${objectives || '(none)'}\n\nNon-negotiables & boundaries:\n${mustHaves || '(none)'}\n\nObjective criteria & context:\n${constraints || '(none)'}\n\nPlease improve clarity, add suggestions, and propose a concise rewrite for each section. Respond as valid JSON only.`;
-
-        const rsp = await openai.chat.completions.create({
-            model: OPENAI_MODEL,
-            messages: [
-                { role: 'system', content: system },
-                { role: 'user', content: user }
-            ],
-            temperature: 0.2,
-            max_tokens: 500,
-            response_format: { type: 'json_object' }
-        });
-
-        const raw = rsp.choices?.[0]?.message?.content || '';
-        let parsed = null;
-        try {
-            const fence = raw.match(/```json\s*([\s\S]*?)```/i);
-            if (fence) parsed = JSON.parse(fence[1]);
-            else parsed = JSON.parse(raw);
-        } catch (e) {
-            // Fallback richer object to avoid empty panels
-            parsed = {
-                overall: 'Consider clarifying each section using concrete, time-bound language tied to objective criteria.',
-                objectives: {
-                    feedback: 'Make motivations explicit and connect to fairness/recognition/downtime.',
-                    suggestions: ['Add a timeframe (e.g., nightly, weekend split).', 'Note desired predictability.'],
-                    rewrite: inputs.objectives || 'My core interests are an equitable workload, recognition of contributions, and predictable downtime.'
-                },
-                mustHaves: {
-                    feedback: 'Phrase boundaries as positive standards (e.g., clean before bed).',
-                    suggestions: ['Avoid absolute language where swaps could work.', 'Include cook’s exemption if applicable.'],
-                    rewrite: inputs.mustHaves || 'Boundaries: nightly cleanliness; alternate responsibility so no one is overloaded.'
-                },
-                constraints: {
-                    feedback: 'List objective facts (hours, who cooks, typical schedules) to anchor fairness.',
-                    suggestions: ['Include weekly hours per person.', 'Specify who cooks and when.'],
-                    rewrite: inputs.constraints || 'I work ~50 hours/week; partner ~40. Whoever cooks is exempt from dishes that night.'
-                }
-            };
-        }
-
-        res.json({ success: true, feedback: parsed });
-    } catch (error) {
-        console.error('Feedback error:', error);
-        res.status(500).json({ success: false, error: 'Feedback generation failed' });
-    }
-});
 
 // Input feedback endpoint
 app.post('/api/input-feedback', async (req, res) => {

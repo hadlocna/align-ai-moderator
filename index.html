@@ -206,7 +206,7 @@
                 </div>
 
                 <div class="text-center my-8">
-                    <button id="feedbackBtn" class="bg-white border border-indigo-300 text-indigo-700 font-bold py-3 px-6 rounded-lg hover:bg-indigo-50 transition mr-3">
+                    <button id="feedbackBtn" onclick="try{ requestAIFeedback(); }catch(e){}" class="bg-white border border-indigo-300 text-indigo-700 font-bold py-3 px-6 rounded-lg hover:bg-indigo-50 transition mr-3">
                         Get AI Feedback
                     </button>
                     <button id="submitBtn" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-indigo-700 transition-transform transform hover:scale-105 disabled:bg-indigo-300 disabled:cursor-not-allowed">
@@ -2361,6 +2361,8 @@
                 btn.textContent = 'Get AI Feedback';
             }
         }
+        // Expose globally to ensure inline onclick works even if bundlers change scope
+        window.requestAIFeedback = requestAIFeedback;
 
         // Bind via delegation to ensure it works even if DOM is re-rendered
         document.addEventListener('click', async (e) => {
@@ -2385,10 +2387,25 @@
                     </div>
                 `;
             };
+            // Synthesize minimal sections if server only returned overall
+            const obj = feedback.objectives || { feedback: '', suggestions: [], rewrite: '' };
+            const mh = feedback.mustHaves || { feedback: '', suggestions: [], rewrite: '' };
+            const con = feedback.constraints || { feedback: '', suggestions: [], rewrite: '' };
+            if (!feedback.objectives && !feedback.mustHaves && !feedback.constraints) {
+                const oVal = (document.getElementById('objectives')?.value || '').trim();
+                const mVal = (document.getElementById('mustHaves')?.value || '').trim();
+                const cVal = (document.getElementById('constraints')?.value || '').trim();
+                if (!obj.feedback) obj.feedback = 'Make this specific and purpose-driven. Tie to fairness, recognition, predictability.';
+                if (!mh.feedback) mh.feedback = 'Express boundaries as positive standards; include swap/exemption rules.';
+                if (!con.feedback) con.feedback = 'List concrete facts (hours, who cooks, deadlines) as objective criteria.';
+                if (!obj.rewrite) obj.rewrite = oVal || 'My core interests are an equitable workload, recognition of contributions, and predictable downtime.';
+                if (!mh.rewrite) mh.rewrite = mVal || 'Boundaries: nightly cleanliness; alternate responsibility so no one is overloaded.';
+                if (!con.rewrite) con.rewrite = cVal || 'I work ~50 hours/week; partner ~40. Whoever cooks is exempt from dishes that night.';
+            }
             const html = `
-                ${section('Objectives', feedback.objectives)}
-                ${section('Must-haves', feedback.mustHaves)}
-                ${section('Constraints', feedback.constraints)}
+                ${section('Objectives', obj)}
+                ${section('Boundaries', mh)}
+                ${section('Objective Criteria & Context', con)}
                 ${feedback.overall ? `<div class="pt-2 text-gray-600">${escapeHtml(feedback.overall)}</div>` : ''}
             `;
             contentEl.innerHTML = html;
