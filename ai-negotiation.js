@@ -181,13 +181,13 @@ ${negotiationSummary}
 
 Return results in TWO parts, in this exact order:
 
-1) A fenced JSON block (\`\`\`json ... \`\`\`), containing ONLY a single JSON object with this schema:
+Return ONLY ONE fenced JSON block (\`\`\`json ... \`\`\`) containing exactly one JSON object with this schema (no prose before or after):
 {
   "title": string,                          // Short title of the agreement
   "clauses": [ { "title": string, "text": string } ], // 3-7 clear, actionable clauses
   "principles": [ { "label": string, "text": string } ], // 3-6 guiding principles
   "summary": string,                        // 1–3 sentence plain-text summary
-  "html": string,                           // HTML rendering of the agreement body (optional; safe markup only)
+  "html": string,                           // OPTIONAL: concise HTML rendering (omit if risk of truncation)
   "analytics": {                            // Negotiation Intelligence Dashboard data
     "health": {
       "fairnessIndex": number,              // 0-100; estimate equality + procedural fairness markers
@@ -226,11 +226,8 @@ Return results in TWO parts, in this exact order:
   }
 }
 
-2) A fenced HTML block (\`\`\`html ... \`\`\`), a readable HTML rendering of the agreement with headings and lists.
-
 Notes (grounded in research — fairness/justice, Pareto/Nash, SMART clarity, objective criteria, integrative trades, style/LSM, concession patterns, implementation-intentions):
 - The JSON MUST be valid and parseable. Do not include trailing commas or comments.
-- Keep the HTML clean and consistent with the JSON content.
 - The agreement should be specific, fair, and implementable by both parties.`;
 
         try {
@@ -240,13 +237,13 @@ Notes (grounded in research — fairness/justice, Pareto/Nash, SMART clarity, ob
                     { role: 'system', content: this.getSystemPrompt() },
                     { role: 'user', content: prompt }
                 ],
-                max_tokens: 600,
+                max_tokens: 1000,
                 temperature: 0.1
             });
 
-            const raw = response.choices[0].message.content;
+            const raw = response.choices[0].message.content || '';
 
-            // Try to extract structured JSON from a fenced block
+            // Extract structured JSON from fenced block; if none, try brace slice
             let structured = null;
             try {
                 const jsonFence = raw.match(/```json\s*([\s\S]*?)```/i);
@@ -254,11 +251,9 @@ Notes (grounded in research — fairness/justice, Pareto/Nash, SMART clarity, ob
                     structured = JSON.parse(jsonFence[1]);
                 } else {
                     // Fallback: attempt to parse first JSON-like substring
-                    const firstBrace = raw.indexOf('{');
-                    const lastBrace = raw.lastIndexOf('}');
-                    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-                        const candidate = raw.slice(firstBrace, lastBrace + 1);
-                        structured = JSON.parse(candidate);
+                    const match = raw.match(/\{[\s\S]*\}/);
+                    if (match) {
+                        structured = JSON.parse(match[0]);
                     }
                 }
             } catch (e) {

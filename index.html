@@ -1584,23 +1584,32 @@
             // Stop any active polling when displaying final results
             stopNegotiationStatusPolling();
 
-            // Prefer structured JSON from backend if present
-            if (result.structured && (Array.isArray(result.structured.clauses) || Array.isArray(result.structured.principles))) {
-                renderPrettyAgreementFromStructured(result.structured);
-            } else {
-                // Render pretty agreement; if parsing yields nothing, fall back
-                renderPrettyAgreement(result);
-            }
-            if (!agreementDiv.textContent || agreementDiv.textContent.trim().length === 0) {
-                // Fallback to original formatting if something went wrong
-                const { html, summary } = formatAgreementContent(result.agreement);
-                agreementDiv.innerHTML = html;
-                if (summary) {
-                    const summaryEl = document.createElement('p');
-                    summaryEl.className = 'mt-4 text-sm italic text-gray-600';
-                    summaryEl.textContent = summary;
-                    agreementDiv.appendChild(summaryEl);
+            try {
+                // Prefer structured JSON from backend if present
+                if (result.structured && (Array.isArray(result.structured.clauses) || Array.isArray(result.structured.principles))) {
+                    renderPrettyAgreementFromStructured(result.structured);
+                } else {
+                    // Render pretty agreement; if parsing yields nothing, fall back
+                    renderPrettyAgreement(result);
                 }
+                if (!agreementDiv.textContent || agreementDiv.textContent.trim().length === 0) {
+                    // Fallback to original formatting if something went wrong
+                    const { html, summary } = formatAgreementContent(result.agreement || '');
+                    agreementDiv.innerHTML = html;
+                    if (summary) {
+                        const summaryEl = document.createElement('p');
+                        summaryEl.className = 'mt-4 text-sm italic text-gray-600';
+                        summaryEl.textContent = summary;
+                        agreementDiv.appendChild(summaryEl);
+                    }
+                }
+            } catch (e) {
+                addDebugLog(`Error rendering agreement: ${e.message}`, 'error');
+                const fallback = document.createElement('div');
+                fallback.className = 'p-4 bg-red-50 border border-red-200 rounded text-sm text-red-700';
+                fallback.textContent = 'There was a problem rendering the agreement. Please try again.';
+                agreementDiv.innerHTML = '';
+                agreementDiv.appendChild(fallback);
             }
 
             backchannelDiv.innerHTML = '';
