@@ -282,6 +282,82 @@ Notes (grounded in research — fairness/justice, Pareto/Nash, SMART clarity, ob
 
 // API Endpoints
 
+// Input feedback endpoint
+app.post('/api/input-feedback', async (req, res) => {
+    try {
+        const { topic = '', userName = 'User', inputs = {} } = req.body || {};
+        const objectives = String(inputs.objectives || '').trim();
+        const mustHaves = String(inputs.mustHaves || '').trim();
+        const constraints = String(inputs.constraints || '').trim();
+
+        if (!objectives && !mustHaves && !constraints) {
+            return res.status(400).json({ error: 'No inputs provided' });
+        }
+
+        // If OpenAI not configured, return heuristic feedback
+        if (!openai) {
+            return res.json({ success: true, feedback: heuristicFeedback({ objectives, mustHaves, constraints, topic, userName }) });
+        }
+
+        const system = `You are an AI coach helping a user improve private inputs before an AI-to-AI negotiation. Your job is to transform vague, positional statements into specific, interest-based, and actionable inputs. Use this framework:
+1) The "Why" Test (Clarifying Interests)
+2) The Specificity Check (Make it Measurable)
+3) The Objective Criteria Prompt (Ground in reality)
+4) The Solution-Space Expander (Move from "No" to "How")
+
+Return ONLY one compact JSON object (no prose) with this exact schema:
+{
+  "objectives": { "feedback": string, "suggestions": string[], "rewrite": string },
+  "mustHaves": { "feedback": string, "suggestions": string[], "rewrite": string },
+  "constraints": { "feedback": string, "suggestions": string[], "rewrite": string },
+  "overall": string
+}
+Rules:
+- Be concise and practical.
+- If a field is empty, give constructive guidance to elicit content.
+- Keep "rewrite" as a single improved paragraph or bullet list for that bucket.`;
+
+        const user = `Context:
+Topic: ${topic}
+User: ${userName}
+
+User Inputs:
+OBJECTIVES:\n${objectives || '(empty)'}
+
+MUST-HAVES:\n${mustHaves || '(empty)'}
+
+CONSTRAINTS:\n${constraints || '(empty)'}
+
+Provide JSON as specified.`;
+
+        const response = await openai.chat.completions.create({
+            model: OPENAI_MODEL,
+            messages: [
+                { role: 'system', content: system },
+                { role: 'user', content: user }
+            ],
+            max_tokens: 600,
+            temperature: 0.3
+        });
+
+        const raw = response.choices?.[0]?.message?.content || '';
+        let feedback = null;
+        try {
+            const fence = raw.match(/```json\s*([\s\S]*?)```/i);
+            const jsonStr = fence ? fence[1] : raw;
+            feedback = JSON.parse(jsonStr);
+        } catch (e) {
+            // As a fallback, return heuristic feedback
+            feedback = heuristicFeedback({ objectives, mustHaves, constraints, topic, userName });
+        }
+
+        return res.json({ success: true, feedback });
+    } catch (err) {
+        console.error('input-feedback error', err);
+        return res.status(500).json({ error: 'Feedback generation failed' });
+    }
+});
+
 app.post('/api/start-negotiation', async (req, res) => {
     try {
         const { sessionId, topic, user1Data, user2Data } = req.body;
@@ -416,3 +492,41 @@ if (require.main === module) {
 }
 
 module.exports = { AIAdvocate, AIModerator, app };
+
+// Heuristic fallback when OpenAI is unavailable
+function heuristicFeedback({ objectives, mustHaves, constraints, topic, userName }) {
+    const f = (text) => text.toLowerCase();
+    const make = (name, text) => {
+        const issues = [];
+        if (!text) {
+            return {
+                feedback: `No ${name} provided. Add a few sentences so your AI can advocate effectively.`,
+                suggestions: [
+                    'State the why behind what you want',
+                    'Add specifics (who/what/when/how much)',
+                    'Reference any objective criteria or schedules'
+                ],
+                rewrite: ''
+            };
+        }
+        const t = f(text);
+        if (/(always|never|must|refuse)/.test(t)) issues.push('Consider the Solution-Space Expander: articulate the non-negotiable outcome, but allow flexible ways to achieve it.');
+        if (/(fair|reasonable|soon|often|regularly|sometimes)/.test(t)) issues.push('Specificity Check: replace vague terms with measurable definitions (e.g., percent/time/frequency).');
+        if (/(feel|feels|upset|tired|overwhelmed)/.test(t)) issues.push('Objective Criteria: supplement feelings with quick facts, lists, or schedules.');
+        if (!/(because|so that|so i can|why)/.test(t)) issues.push('Why Test: add a brief why to clarify interests.');
+
+        const suggestions = issues.length ? issues : ['Looks good. Consider adding 1–2 concrete examples to strengthen it.'];
+        return {
+            feedback: suggestions.join(' '),
+            suggestions,
+            rewrite: text
+        };
+    };
+
+    return {
+        objectives: make('objectives', objectives),
+        mustHaves: make('must-haves', mustHaves),
+        constraints: make('constraints', constraints),
+        overall: 'Tighten language, clarify the why behind your positions, quantify where possible, and ground feelings with brief, objective references.'
+    };
+}

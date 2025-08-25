@@ -190,13 +190,25 @@
                             <textarea id="mustHaves" placeholder="What boundaries or principles must be upheld? (e.g., kitchen clean before bed; cannot do dishes every single day)" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
                         </div>
                         <div>
-                            <label class="font-semibold text-lg">3. What objective criteria and context should we consider?</label>
+                            <label class="font-semibold text-lg">3. What objective criteria and context should be considered?</label>
                             <textarea id="constraints" placeholder="Share concrete facts or standards (e.g., work hours, schedule, who cooks, deadlines, external guidelines)." class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
                         </div>
                     </div>
                 </div>
 
+                <!-- AI Feedback Panel -->
+                <div id="feedbackPanel" class="hidden mt-6 bg-white p-6 rounded-2xl shadow-lg border border-indigo-100">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xl font-bold text-gray-800">AI Feedback</h3>
+                        <span id="feedbackBadge" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">Coach</span>
+                    </div>
+                    <div id="feedbackContent" class="mt-4 text-sm text-gray-700 space-y-4"></div>
+                </div>
+
                 <div class="text-center my-8">
+                    <button id="feedbackBtn" class="bg-white border border-indigo-300 text-indigo-700 font-bold py-3 px-6 rounded-lg hover:bg-indigo-50 transition mr-3">
+                        Get AI Feedback
+                    </button>
                     <button id="submitBtn" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-indigo-700 transition-transform transform hover:scale-105 disabled:bg-indigo-300 disabled:cursor-not-allowed">
                         Send to My AI
                     </button>
@@ -898,6 +910,16 @@
                     indicator.classList.add('text-gray-400');
                 }
             });
+        }
+        
+        // Basic HTML escape for safe rendering
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
         
         // Event Listeners
@@ -2304,8 +2326,81 @@
                             btn.innerHTML = '<i class="fas fa-bug mr-1"></i>Show Debug';
                         }
                     }
-                }
-            });
+            }
+        });
+
+        // Request AI feedback on inputs
+        document.getElementById('feedbackBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('feedbackBtn');
+            const panel = document.getElementById('feedbackPanel');
+            const contentEl = document.getElementById('feedbackContent');
+            const objectives = document.getElementById('objectives').value.trim();
+            const mustHaves = document.getElementById('mustHaves').value.trim();
+            const constraints = document.getElementById('constraints').value.trim();
+
+            if (!objectives && !mustHaves && !constraints) {
+                showNotification('Please add some inputs first', 'warning');
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                const original = btn.textContent;
+                btn.textContent = 'Getting feedback…';
+                addDebugLog('Requesting AI feedback for inputs', 'info');
+
+                const apiUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                    ? 'http://localhost:3001/api/input-feedback'
+                    : 'https://align-ai-negotiation.onrender.com/api/input-feedback';
+
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic: sessionData.topic,
+                        userName: sessionData.userName || 'User',
+                        inputs: { objectives, mustHaves, constraints }
+                    })
+                });
+
+                if (!res.ok) throw new Error('Feedback request failed');
+                const data = await res.json();
+                const feedback = data.feedback || {};
+                renderFeedback(feedback);
+                panel.classList.remove('hidden');
+                showNotification('Feedback ready', 'success');
+            } catch (err) {
+                addDebugLog('Feedback error: ' + (err.message || err), 'error');
+                showNotification('Could not get feedback right now', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Get AI Feedback';
+            }
+        });
+
+        function renderFeedback(feedback) {
+            const contentEl = document.getElementById('feedbackContent');
+            const section = (title, data) => {
+                if (!data) return '';
+                const suggestions = (data.suggestions || []).map(s => `<li class="ml-5 list-disc">${escapeHtml(s)}</li>`).join('');
+                const rewrite = data.rewrite ? `<div class="mt-2 p-3 bg-indigo-50 border border-indigo-100 rounded"><div class="text-xs text-indigo-700 font-semibold mb-1">Suggested rewrite</div><div>${escapeHtml(data.rewrite)}</div></div>` : '';
+                return `
+                    <div>
+                        <div class="font-semibold text-gray-800">${title}</div>
+                        <div class="text-gray-700">${escapeHtml(data.feedback || '')}</div>
+                        ${suggestions ? `<ul class="mt-2 text-gray-700">${suggestions}</ul>` : ''}
+                        ${rewrite}
+                    </div>
+                `;
+            };
+            const html = `
+                ${section('Objectives', feedback.objectives)}
+                ${section('Must-haves', feedback.mustHaves)}
+                ${section('Constraints', feedback.constraints)}
+                ${feedback.overall ? `<div class="pt-2 text-gray-600">${escapeHtml(feedback.overall)}</div>` : ''}
+            `;
+            contentEl.innerHTML = html;
+        }
         }
 
         // Ensure focused inputs stay visible on mobile when the keyboard opens
