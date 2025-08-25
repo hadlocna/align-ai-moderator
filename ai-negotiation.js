@@ -282,6 +282,71 @@ Notes (grounded in research — fairness/justice, Pareto/Nash, SMART clarity, ob
 
 // API Endpoints
 
+// Provide coaching/feedback on a single user's inputs before negotiation
+app.post('/api/input-feedback', async (req, res) => {
+    try {
+        const { topic, userName = 'User', inputs = {} } = req.body || {};
+        const { objectives = '', mustHaves = '', constraints = '' } = inputs;
+
+        // If OpenAI not configured, return a lightweight mock to keep UX unblocked
+        if (!openai) {
+            return res.json({
+                success: true,
+                feedback: {
+                    overall: 'Consider making each point specific and measurable. Tie boundaries to objective criteria (e.g., schedules, who cooks).',
+                    objectives: {
+                        feedback: 'Clarify what “equitable” means in practice (e.g., alternating nights, weekend split).',
+                        suggestions: ['Add timeframe (e.g., before bed).', 'Mention recognition/visibility if important.'],
+                        rewrite: objectives ? objectives : 'My core interests are an equitable workload, feeling recognized, and preserving predictable downtime.'
+                    },
+                    mustHaves: {
+                        feedback: 'Phrase boundaries as positive commitments. Include triggers (e.g., “if one cooks, the other does dishes”).',
+                        suggestions: ['Use “must/should” vs. “never/always”.', 'Tie to a nightly cleanliness standard.'],
+                        rewrite: mustHaves ? mustHaves : 'Boundaries: the kitchen is clean before bed; rotate duties so one person is not overloaded.'
+                    },
+                    constraints: {
+                        feedback: 'List objective facts (hours, who cooks, deadlines). These become fair standards.',
+                        suggestions: ['Include weekly hours per person.', 'Identify typical cooking nights or late shifts.'],
+                        rewrite: constraints ? constraints : 'I work ~50 hours/week; partner ~40. Whoever cooks is exempt from dishes that night.'
+                    }
+                }
+            });
+        }
+
+        const system = `You are a negotiation coach helping ${userName} prepare private inputs for a negotiation about: "${topic || 'the topic'}".
+Return actionable, constructive feedback in JSON (no prose) with keys: overall, objectives{feedback,suggestions[],rewrite}, mustHaves{...}, constraints{...}. Use SMART and objective-criteria principles. Keep tone supportive and specific.`;
+
+        const user = `Inputs from ${userName} (reframed fields):\n
+Core interests & priorities:\n${objectives || '(none)'}\n\nNon-negotiables & boundaries:\n${mustHaves || '(none)'}\n\nObjective criteria & context:\n${constraints || '(none)'}\n\nPlease improve clarity, add suggestions, and propose a concise rewrite for each section. Respond as valid JSON only.`;
+
+        const rsp = await openai.chat.completions.create({
+            model: OPENAI_MODEL,
+            messages: [
+                { role: 'system', content: system },
+                { role: 'user', content: user }
+            ],
+            temperature: 0.2,
+            max_tokens: 500
+        });
+
+        const raw = rsp.choices?.[0]?.message?.content || '';
+        let parsed = null;
+        try {
+            const fence = raw.match(/```json\s*([\s\S]*?)```/i);
+            if (fence) parsed = JSON.parse(fence[1]);
+            else parsed = JSON.parse(raw);
+        } catch (e) {
+            // fallback minimal object
+            parsed = { overall: 'Consider clarifying each section using concrete, time-bound language.' };
+        }
+
+        res.json({ success: true, feedback: parsed });
+    } catch (error) {
+        console.error('Feedback error:', error);
+        res.status(500).json({ success: false, error: 'Feedback generation failed' });
+    }
+});
+
 // Input feedback endpoint
 app.post('/api/input-feedback', async (req, res) => {
     try {

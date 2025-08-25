@@ -1190,25 +1190,7 @@
             document.getElementById('agreedTopic').textContent = sessionData.topic;
             showScreen(userInputScreen);
             updateStepIndicator(1);
-            
-            // Prefill test inputs for easier testing
-            const objectivesEl = document.getElementById('objectives');
-            const mustHavesEl = document.getElementById('mustHaves');
-            const constraintsEl = document.getElementById('constraints');
-            
-            if (sessionData.isCreator) {
-                // Initiator/Creator test inputs (reframed)
-                if (!objectivesEl.value) objectivesEl.value = "My core interests are an equitable household workload, feeling my contributions are recognized, and preserving predictable downtime.";
-                if (!mustHavesEl.value) mustHavesEl.value = "Boundaries: the kitchen should be clean before bed; I cannot do dishes every single day — an alternating system is required.";
-                if (!constraintsEl.value) constraintsEl.value = "Objective criteria/context: I work ~50 hours/week; my partner ~40. Evenings after 8pm are low‑energy; weekends are key downtime.";
-            } else {
-                // Joiner/Receiver test inputs (reframed)
-                if (!objectivesEl.value) objectivesEl.value = "My core interests are a clean kitchen each night for peace of mind and sharing responsibility so it doesn’t feel one‑sided.";
-                if (!mustHavesEl.value) mustHavesEl.value = "Boundaries: dishes must be done nightly; kitchen hygiene is non‑negotiable.";
-                if (!constraintsEl.value) constraintsEl.value = "Objective criteria/context: I work ~40 hours/week and usually cook ~3 nights. When someone cooks a bigger meal, the other should do dishes.";
-            }
-            
-            addDebugLog(`Prefilled test inputs for ${sessionData.isCreator ? 'creator' : 'joiner'}`, 'info');
+            // Keep fields empty so users provide their own information; rely on placeholders
         }
         
         function handlePartnerInputsReceived(message) {
