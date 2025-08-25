@@ -2311,8 +2311,7 @@
             }
         });
 
-        // Request AI feedback on inputs
-        document.getElementById('feedbackBtn').addEventListener('click', async () => {
+        async function requestAIFeedback() {
             const btn = document.getElementById('feedbackBtn');
             const panel = document.getElementById('feedbackPanel');
             const contentEl = document.getElementById('feedbackContent');
@@ -2347,7 +2346,10 @@
 
                 if (!res.ok) throw new Error('Feedback request failed');
                 const data = await res.json();
-                const feedback = data.feedback || {};
+                let feedback = data.feedback || {};
+                if (typeof feedback === 'string') {
+                    feedback = { overall: feedback };
+                }
                 renderFeedback(feedback);
                 panel.classList.remove('hidden');
                 showNotification('Feedback ready', 'success');
@@ -2357,6 +2359,14 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Get AI Feedback';
+            }
+        }
+
+        // Bind via delegation to ensure it works even if DOM is re-rendered
+        document.addEventListener('click', async (e) => {
+            if (e.target && e.target.id === 'feedbackBtn') {
+                e.preventDefault();
+                try { await requestAIFeedback(); } catch {}
             }
         });
 
