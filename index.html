@@ -182,16 +182,16 @@
                     <p class="text-gray-500 mb-6">Only you and your personal AI will see this. Be open and honest.</p>
                     <div class="space-y-6">
                         <div>
-                            <label class="font-semibold text-lg">1. Your Ideal Outcome</label>
-                            <textarea id="objectives" placeholder="What's the best possible result for you?" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
+                            <label class="font-semibold text-lg">1. What are your core interests and priorities?</label>
+                            <textarea id="objectives" placeholder="What matters most to you and why? (e.g., equitable workload, feeling recognized, predictable downtime)" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
                         </div>
                         <div>
-                            <label class="font-semibold text-lg">2. Your Must-Haves (Red Lines)</label>
-                            <textarea id="mustHaves" placeholder="What is absolutely non-negotiable?" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
+                            <label class="font-semibold text-lg">2. What are your non-negotiables and boundaries?</label>
+                            <textarea id="mustHaves" placeholder="What boundaries or principles must be upheld? (e.g., kitchen clean before bed; cannot do dishes every single day)" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
                         </div>
                         <div>
-                            <label class="font-semibold text-lg">3. Key Facts & Constraints</label>
-                            <textarea id="constraints" placeholder="Any budget, time limits, or important facts?" class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
+                            <label class="font-semibold text-lg">3. What objective criteria and context should we consider?</label>
+                            <textarea id="constraints" placeholder="Share concrete facts or standards (e.g., work hours, schedule, who cooks, deadlines, external guidelines)." class="mt-2 w-full p-2 border rounded-md h-24"></textarea>
                         </div>
                     </div>
                 </div>
@@ -220,7 +220,7 @@
                                 <i class="fas fa-user-shield fa-2x text-indigo-600"></i>
                             </div>
                             <h4 class="font-semibold text-lg mt-3">Your Inputs are Private</h4>
-                            <p class="text-gray-600 mt-1">Your partner never sees your objectives or red lines. Only your AI advocate has access.</p>
+                            <p class="text-gray-600 mt-1">Your partner never sees your core interests or boundaries. Only your AI advocate has access.</p>
                         </div>
                         <div class="flex flex-col items-center">
                             <div class="bg-white rounded-full p-4 shadow-md">
@@ -1175,15 +1175,15 @@
             const constraintsEl = document.getElementById('constraints');
             
             if (sessionData.isCreator) {
-                // Initiator/Creator test inputs
-                if (!objectivesEl.value) objectivesEl.value = "I want a fair division of household chores that doesn't overwhelm either person and allows time for relaxation.";
-                if (!mustHavesEl.value) mustHavesEl.value = "I refuse to do dishes every single day - we need to alternate or find another solution.";
-                if (!constraintsEl.value) constraintsEl.value = "I work long hours during the week, so weekends are important downtime for me.";
+                // Initiator/Creator test inputs (reframed)
+                if (!objectivesEl.value) objectivesEl.value = "My core interests are an equitable household workload, feeling my contributions are recognized, and preserving predictable downtime.";
+                if (!mustHavesEl.value) mustHavesEl.value = "Boundaries: the kitchen should be clean before bed; I cannot do dishes every single day — an alternating system is required.";
+                if (!constraintsEl.value) constraintsEl.value = "Objective criteria/context: I work ~50 hours/week; my partner ~40. Evenings after 8pm are low‑energy; weekends are key downtime.";
             } else {
-                // Joiner/Receiver test inputs  
-                if (!objectivesEl.value) objectivesEl.value = "I need my partner to take on more household responsibilities so I don't feel like I'm doing everything.";
-                if (!mustHavesEl.value) mustHavesEl.value = "Dishes must be done every night - I can't stand waking up to a messy kitchen.";
-                if (!constraintsEl.value) constraintsEl.value = "I'm willing to negotiate other chores, but cleanliness in the kitchen is non-negotiable for me.";
+                // Joiner/Receiver test inputs (reframed)
+                if (!objectivesEl.value) objectivesEl.value = "My core interests are a clean kitchen each night for peace of mind and sharing responsibility so it doesn’t feel one‑sided.";
+                if (!mustHavesEl.value) mustHavesEl.value = "Boundaries: dishes must be done nightly; kitchen hygiene is non‑negotiable.";
+                if (!constraintsEl.value) constraintsEl.value = "Objective criteria/context: I work ~40 hours/week and usually cook ~3 nights. When someone cooks a bigger meal, the other should do dishes.";
             }
             
             addDebugLog(`Prefilled test inputs for ${sessionData.isCreator ? 'creator' : 'joiner'}`, 'info');
